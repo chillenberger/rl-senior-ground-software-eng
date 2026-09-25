@@ -61,5 +61,16 @@ Backend tests:
 npm test --prefix backend
 ```
 
+## Populate the database
+
+```bash
+npm run seed
+SQLITE_PATH=data/telemetry.sqlite npm run dev
+```
+
+`data/telemetry.sqlite` is relative to `backend/`.
+
+To write a different file, set `SQLITE_PATH` for the seed as well, then start the API with that same path.
+
 ## Docs 
 Refer to `/docs` for design decisions, client needs, development plan, running task list. 

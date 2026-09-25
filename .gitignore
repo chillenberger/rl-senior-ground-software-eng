@@ -37,6 +37,12 @@ coverage
 # Output directories
 dist/
 build/
+
+# Local SQLite files written by the seed script
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
 .next/
 out/
 
