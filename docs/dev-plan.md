@@ -1,4 +1,6 @@
 # Overview 
+This document is for documenting design choices. 
+
 This is a satellite telemetry dashboard Rocket Lab. It consists of two parts: 
 - Backend: API for relaying data to frontend.   
 - Frontend: Easy viewing and managing satellite data. 
@@ -22,6 +24,9 @@ This is a satellite telemetry dashboard Rocket Lab. It consists of two parts:
 
 ### Schema and notes
 - db entry types do not need to match API types.
+- seed via bash script, reduces boiler plat and makes data easier to read since we can save as an object.
+- split schema and migration to split concerns.  
+
 #### Satellites
 {
   id: string (okay not to be sequential or integer since rite and filter by should be rare)
