@@ -1,0 +1,21 @@
+{
+  "name": "rocket-lab-satellite-telemetry",
+  "version": "1.0.0",
+  "description": "Monorepo for Rocket Lab satellite telemetry api and dashboard",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "install:all": "npm install --prefix frontend && npm install --prefix backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "build:frontend": "npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "build": "npm run build:frontend && npm run build:backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
