@@ -22,10 +22,30 @@ This is a satellite telemetry dashboard Rocket Lab. It consists of two parts:
 - Testing: #TODO:
 - Package Manager: npm - simple good for small project no setup
 
-### Schema and notes
+
+### API contract
+- /telemetry return 
+```
+[
+  {
+    satelliteId,
+    timestamp, 
+    altitude, 
+    velocity,
+    status (note: status not health status since requirements are specific about POST request form, they should match)
+  }
+]
+```
+- Per instructions a missing limit filter should return all rows.  
+
+- telemetry/:id returns a single of /telemetry array. 
+
+### DB Schema and notes
 - db entry types do not need to match API types.
 - seed via bash script, reduces boiler plat and makes data easier to read since we can save as an object.
 - split schema and migration to split concerns.  
+- ORM #TODO: maybe Drizzle if felt it cleans up the code or conveys knowledge. 
+- Snake_case: SQLite is case insensitive. 
 
 #### Satellites
 {

@@ -15,15 +15,12 @@ Objective: Design and implement a REST API to manage satellite telemetry data.
 #### 1. Endpoints
 Implement the following API endpoints:
 
-[ ] GET /telemetry: Retrieve all telemetry data.
-  [ ] satellite ID, 
-  [ ] timestamp, 
-  [ ] altitude, 
-  [ ] velocity,
-  [ ] health status. 
-[ ] Optional query parameters:
-  [ ] satelliteId: Filter by satellite ID.
-  [ ] status: Filter by health status (e.g., “healthy”, “critical”).
+[x] GET /telemetry:
+  [x] Return {satelliteId, timestamp, altitude, velocity, status}
+  [x] No limit return all telemetry data
+[x] Optional query parameters:
+  [x] satelliteId: Filter by satellite ID.
+  [x] status: Filter by health status (e.g., “healthy”, “critical”).
 
 [ ] POST /telemetry: Add a new telemetry entry.
   [ ] Request body should include:
@@ -37,7 +34,7 @@ Implement the following API endpoints:
 }
 ```
 
-[ ] GET /telemetry/:id: Retrieve a specific telemetry entry by ID.
+[x] GET /telemetry/:id: Retrieve a specific telemetry entry by ID.
 [ ] DELETE /telemetry/:id: Delete a specific telemetry entry.
 
 

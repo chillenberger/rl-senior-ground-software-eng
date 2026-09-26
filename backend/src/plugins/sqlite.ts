@@ -15,7 +15,7 @@ const sqlitePlugin: FastifyPluginAsync<SqlitePluginOptions> = async (fastify, op
   const db = openDatabase(filename)
 
   fastify.decorate('db', db)
-  fastify.addHook('onClose', async () => {
+  fastify.addHook('onClose', () => {
     db.close()
   })
 }
