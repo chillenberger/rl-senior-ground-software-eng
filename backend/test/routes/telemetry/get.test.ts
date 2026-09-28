@@ -156,3 +156,14 @@ test('telemetry record by id', async (t) => {
     assert.ok(resFields.includes(key), `Field ${key} is required`)
   })
 })
+
+test('telemetry record by id not found', async (t) => {
+  const app = await build(t)
+  seedDatabase(app.db)
+  const res = await app.inject({
+    url: '/telemetry/5'
+  })
+  assert.equal(res.statusCode, 404)
+  const body = res.json<{ message: string }>()
+  assert.equal(body.message, 'Telemetry record 5 not found')
+})

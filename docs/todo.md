@@ -22,7 +22,7 @@ Implement the following API endpoints:
   [x] satelliteId: Filter by satellite ID.
   [x] status: Filter by health status (e.g., “healthy”, “critical”).
 
-[ ] POST /telemetry: Add a new telemetry entry.
+[x] POST /telemetry: Add a new telemetry entry.
   [x] Deduplication 
   [x] Indempotency
   [x] Request body should include:
@@ -37,17 +37,17 @@ Implement the following API endpoints:
 ```
 
 [x] GET /telemetry/:id: Retrieve a specific telemetry entry by ID.
-[ ] DELETE /telemetry/:id: Delete a specific telemetry entry.
+[x] DELETE /telemetry/:id: Delete a specific telemetry entry.
 
 
 #### 2. Data Storage
-[ ] Use an in-memory database (e.g., SQLite, or a simple array for simplicity).
-  [ ] Ensure data persistence during runtime.
+[x] Use an in-memory database (e.g., SQLite, or a simple array for simplicity).
+  [x] Ensure data persistence during runtime.
 
 #### 3. Validation
-[ ] Validate incoming data:
-  [ ] timestamp must be a valid ISO 8601 datetime.
-  [ ] altitude and velocity must be positive numbers.
+[x] Validate incoming data:
+  [x] timestamp must be a valid ISO 8601 datetime.
+  [x] altitude and velocity must be positive numbers.
 
 #### 4. Implementation Details
 [x] Use a backend framework of your choice (e.g., Node.js with Express, Python
@@ -55,8 +55,8 @@ with Flask/FastAPI, etc.).
 [ ] Write clean, modular code with comments explaining key decisions.
 
 #### Bonus Features
-[ ] Add pagination support to the GET /telemetry endpoint.
-[ ] Implement unit tests for the API endpoints.
+[x] Add pagination support to the GET /telemetry endpoint.
+[x] Implement unit tests for the API endpoints.
 [ ] Include Docker support for easy deployment.
 
 ## Frontend Task: Satellite Telemetry Dashboard

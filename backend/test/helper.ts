@@ -46,6 +46,7 @@ export const testSatellites = [
 
 export const testReadings = [
   {
+    id: '1',
     satellite_id: 'PHOTON-01',
     latitude: 10,
     longitude: 20,
@@ -55,6 +56,7 @@ export const testReadings = [
     health_status: 'healthy' as const,
   },
   {
+    id: '2',
     satellite_id: 'PHOTON-01',
     latitude: 11,
     longitude: 21,
@@ -64,6 +66,7 @@ export const testReadings = [
     health_status: 'anomaly' as const,
   },
   {
+    id: '3',
     satellite_id: 'AURORA-3',
     latitude: null,
     longitude: null,
@@ -73,6 +76,7 @@ export const testReadings = [
     health_status: 'healthy' as const,
   },
   {
+    id: '4',
     satellite_id: 'AURORA-3',
     latitude: 40,
     longitude: -74,

@@ -140,9 +140,10 @@ export function getTelemetryRecords (
 export function getTelemetryRecordById (
   db: SqliteDatabase,
   id: string,
-): z.output<typeof TelemetryRecordSchema> | null {
+): z.output<typeof TelemetryRecordSchema> {
   const row = db.prepare('SELECT * FROM telemetry WHERE id = ?').get(id)
-  return TelemetryRecordSchema.safeParse(row).success ? TelemetryRecordSchema.parse(row) : null
+  if (!row) throw new TelemetryRecordNotFoundError(id)
+  return TelemetryRecordSchema.parse(row)
 }
 
 export const CreateTelemetryRecordRequestSchema = z.object({
@@ -166,6 +167,13 @@ export class UnknownSatelliteError extends Error {
   constructor (satelliteId: string) {
     super(`Satellite ${satelliteId} not found`)
     this.name = 'UnknownSatelliteError'
+  }
+}
+
+export class TelemetryRecordNotFoundError extends Error {
+  constructor (id: string) {
+    super(`Telemetry record ${id} not found`)
+    this.name = 'TelemetryRecordNotFoundError'
   }
 }
 
@@ -213,4 +221,12 @@ export function createTelemetryRecord (
 
     throw new TelemetryConflictError()
   }
+}
+
+export function deleteTelemetryRecordById (
+  db: SqliteDatabase,
+  id: string,
+): void {
+  const row = db.prepare('DELETE FROM telemetry WHERE id = ?').run(id)
+  if (row.changes === 0) throw new TelemetryRecordNotFoundError(id)
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import * as assert from 'node:assert'
-import { createTelemetryRecord, getTelemetryRecords, getTelemetryRecordById, TelemetryConflictError, type TelemetryRecord } from '../../src/db/database'
+import { createTelemetryRecord, getTelemetryRecords, getTelemetryRecordById, TelemetryConflictError, TelemetryRecordNotFoundError, type TelemetryRecord } from '../../src/db/database'
 import { createTempDatabase, seedDatabase, testReadings } from '../helper'
 
 function storedFields (record: TelemetryRecord) {
@@ -167,8 +167,11 @@ test('getTelemetryRecordById', async (t) => {
 test('getTelemetryRecordById on missing record', async (t) => {
   const db = createTempDatabase(t)
   seedDatabase(db)
-  const record = getTelemetryRecordById(db, '999')
-  assert.deepEqual(record, null)
+  assert.throws(
+    () => getTelemetryRecordById(db, '999'),
+    (error: unknown) => error instanceof TelemetryRecordNotFoundError
+      && error.message === 'Telemetry record 999 not found',
+  )
 })
 
 test('createTelemetryRecord returns the existing row for the same satellite and instant', (t) => {

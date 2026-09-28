@@ -9,6 +9,8 @@ import {
   GetTelemetryRecordsOptionsSchema,
   TelemetryConflictError,
   UnknownSatelliteError,
+  deleteTelemetryRecordById,
+  TelemetryRecordNotFoundError,
 } from '../../db/database'
 import type { GetTelemetryRecordsOptions } from '../../db/database'
 
@@ -49,11 +51,14 @@ const telemetry: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
       },
     },
   }, async function (request) {
-    const record = getTelemetryRecordById(fastify.db, request.params.telemetry_id)
-    if (!record) {
-      throw fastify.httpErrors.notFound('Telemetry record not found')
+    try {
+      return getTelemetryRecordById(fastify.db, request.params.telemetry_id)
+    } catch (error) {
+      if (error instanceof TelemetryRecordNotFoundError) {
+        throw fastify.httpErrors.notFound(error.message)
+      }
+      throw error
     }
-    return record
   })
 
   fastify.post('/', {
@@ -75,6 +80,27 @@ const telemetry: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
       }
       throw error
     }
+  })
+
+  fastify.delete('/:telemetry_id', {
+    schema: {
+      params: z.object({
+        telemetry_id: z.string(),
+      }),
+      response: {
+        204: z.null(),
+      }
+    },
+  }, async function (request, reply) {
+    try {
+      deleteTelemetryRecordById(fastify.db, request.params.telemetry_id)
+    } catch (error) {
+      if (error instanceof TelemetryRecordNotFoundError) {
+        throw fastify.httpErrors.notFound(error.message)
+      }
+      throw error
+    }
+    return reply.code(204).send(null)
   })
 }
 
