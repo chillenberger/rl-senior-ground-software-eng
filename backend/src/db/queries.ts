@@ -1,16 +1,6 @@
 import { z } from 'zod'
-import { SqliteDatabase } from './database'
-
 import Database from 'better-sqlite3'
-
-
-export const SatelliteRecordSchema = z.object({
-  id: z.string(),
-  operator: z.string(),
-  created_at: z.string(),
-  updated_at: z.string(),
-})
-export type SatelliteRecord = z.infer<typeof SatelliteRecordSchema>
+import { SqliteDatabase } from './database'
 
 export const HealthStatusSchema = z.enum(['healthy', 'anomaly', 'critical'])
 export const OrderDirectionSchema = z.enum(['asc', 'desc'])

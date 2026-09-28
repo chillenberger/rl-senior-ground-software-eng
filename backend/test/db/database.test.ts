@@ -6,7 +6,8 @@ import {
   getTelemetryRecordById, 
   TelemetryConflictError, 
   TelemetryRecordNotFoundError, 
-  type TelemetryRecord } from '../../src/db/queries'
+  type TelemetryRecord 
+} from '../../src/db/queries'
 import { createTempDatabase, seedDatabase, testReadings } from '../helper'
 
 function storedFields (record: TelemetryRecord) {
