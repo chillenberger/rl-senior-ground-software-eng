@@ -21,6 +21,10 @@ export const OrderDirectionSchema = z.enum(['asc', 'desc'])
 
 export type HealthStatus = z.infer<typeof HealthStatusSchema>
 
+/*
+SQLite schema for the telemetry table.
+SQLite is case insensitive, so we use the snake_case column names.
+*/
 export const TelemetryRecordDBSchema = z.object({
   id: z.number(),
   satellite_id: z.string(),
@@ -34,7 +38,7 @@ export const TelemetryRecordDBSchema = z.object({
 })
 
 /* 
-Reconcile SQLite column case insensitivity with api requirement of camel case standard.
+Efficient snake_case to camelCase transformation.  
 */
 export const TelemetryRecordSchema = TelemetryRecordDBSchema.transform((record) => ({
   id: record.id.toString(),
@@ -51,6 +55,8 @@ export const TelemetryRecordSchema = TelemetryRecordDBSchema.transform((record) 
 export type TelemetryRecord = z.infer<typeof TelemetryRecordSchema>
 
 export type SqliteDatabase = Database.Database
+
+
 
 export function openDatabase (filename: string = DEFAULT_DATABASE_PATH): SqliteDatabase {
   const db = new Database(filename)
@@ -140,11 +146,13 @@ export function getTelemetryRecordById (
 }
 
 export const CreateTelemetryRecordRequestSchema = z.object({
-  timestamp: z.iso.datetime().transform((value) => new Date(value).toISOString()),
+  timestamp: z.iso.datetime({ offset: true}).transform((value) => new Date(value).toISOString()),
   satelliteId: z.string(),
   status: HealthStatusSchema,
-  altitude: z.number().nonnegative(),
-  velocity: z.number().nonnegative(),
+  altitude: z.number().positive(),
+  velocity: z.number().positive(),
+  latitude: z.number().min(-90).max(90).nullable().optional().default(null),
+  longitude: z.number().min(-180).max(180).nullable().optional().default(null),
 })
 
 export class TelemetryConflictError extends Error {
@@ -152,6 +160,24 @@ export class TelemetryConflictError extends Error {
     super('Telemetry record already exists for this satellite and timestamp with different values')
     this.name = 'TelemetryConflictError'
   }
+}
+
+export class UnknownSatelliteError extends Error {
+  constructor (satelliteId: string) {
+    super(`Satellite ${satelliteId} not found`)
+    this.name = 'UnknownSatelliteError'
+  }
+}
+
+function isSameTelemetryRecord (
+  stored: z.output<typeof TelemetryRecordSchema>,
+  record: z.input<typeof CreateTelemetryRecordRequestSchema>,
+): boolean {
+  return stored.altitude === record.altitude
+    && stored.velocity === record.velocity
+    && stored.status === record.status
+    && stored.latitude === record.latitude
+    && stored.longitude === record.longitude
 }
 
 /* 
@@ -172,9 +198,10 @@ export function createTelemetryRecord (
   `)
 
   try {
-    const row = insert.get(parsed.satelliteId, 0, 0, parsed.timestamp, parsed.altitude, parsed.velocity, parsed.status)
+    const row = insert.get(parsed.satelliteId, parsed.latitude, parsed.longitude, parsed.timestamp, parsed.altitude, parsed.velocity, parsed.status)
     return TelemetryRecordSchema.parse(row)
   } catch (error) {
+    if (((error instanceof Database.SqliteError) && error.code === 'SQLITE_CONSTRAINT_FOREIGNKEY')) throw new UnknownSatelliteError(parsed.satelliteId)
     if (!((error instanceof Database.SqliteError) && error.code === 'SQLITE_CONSTRAINT_UNIQUE')) throw error
 
     const existing = db
@@ -182,7 +209,7 @@ export function createTelemetryRecord (
       .get(parsed.satelliteId, parsed.timestamp)
     const stored = TelemetryRecordSchema.safeParse(existing)
     if (!stored.success) throw error
-    if (stored.data.altitude === parsed.altitude && stored.data.velocity === parsed.velocity && stored.data.status === parsed.status) return stored.data
+    if (isSameTelemetryRecord(stored.data, parsed)) return stored.data
 
     throw new TelemetryConflictError()
   }

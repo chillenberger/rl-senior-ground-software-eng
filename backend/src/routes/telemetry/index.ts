@@ -8,6 +8,7 @@ import {
   createTelemetryRecord,
   GetTelemetryRecordsOptionsSchema,
   TelemetryConflictError,
+  UnknownSatelliteError,
 } from '../../db/database'
 import type { GetTelemetryRecordsOptions } from '../../db/database'
 
@@ -23,7 +24,7 @@ const TelemetryRecordResponseSchema = z.object({
 const telemetry: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
   fastify.get('/', {
     schema: {
-      querystring: GetTelemetryRecordsOptionsSchema.strict().extend({}),
+      querystring: GetTelemetryRecordsOptionsSchema.strict(),
       response: {
         200: z.array(TelemetryRecordResponseSchema),
       },
@@ -68,6 +69,9 @@ const telemetry: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
     } catch (error) {
       if (error instanceof TelemetryConflictError) {
         throw fastify.httpErrors.conflict(error.message)
+      }
+      if (error instanceof UnknownSatelliteError) {
+        throw fastify.httpErrors.notFound(error.message)
       }
       throw error
     }
