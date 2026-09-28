@@ -1,11 +1,23 @@
 import { test } from 'node:test'
 import * as assert from 'node:assert'
-import { getTelemetryRecords, getTelemetryRecordById, type TelemetryRecord } from '../../src/db/database'
+import { createTelemetryRecord, getTelemetryRecords, getTelemetryRecordById, TelemetryConflictError, type TelemetryRecord } from '../../src/db/database'
 import { createTempDatabase, seedDatabase, testReadings } from '../helper'
 
 function storedFields (record: TelemetryRecord) {
-  const { id, created_at, ...fields } = record
+  const { id, createdAt, ...fields } = record
   return fields
+}
+
+function publicFields (reading: typeof testReadings[number]) {
+  return {
+    satelliteId: reading.satellite_id,
+    latitude: reading.latitude,
+    longitude: reading.longitude,
+    timestamp: reading.timestamp,
+    altitude: reading.altitude,
+    velocity: reading.velocity,
+    status: reading.health_status,
+  }
 }
 
 function byTimestamp<T extends { timestamp: string }> (left: T, right: T): number {
@@ -26,16 +38,16 @@ test('getTelemetryRecords', async (t) => {
     assert.equal(records.length, testReadings.length)
     assert.deepEqual(
       records.map(storedFields).sort(byTimestamp),
-      testReadings.toSorted(byTimestamp),
+      testReadings.map(publicFields).toSorted(byTimestamp),
     )
 
     const generated = records.find(record => record.timestamp === '2026-09-25T16:20:00.000Z')
     assert.ok(generated)
     assert.equal(generated.latitude, null)
     assert.equal(generated.longitude, null)
-    assert.equal(typeof generated.id, 'number')
-    assert.equal(typeof generated.created_at, 'string')
-    assert.ok(generated.created_at.length > 0)
+    assert.equal(typeof generated.id, 'string')
+    assert.equal(typeof generated.createdAt, 'string')
+    assert.ok(generated.createdAt.length > 0)
   })
 
   await t.test('ignores a filter object when no fields are set', () => {
@@ -62,7 +74,7 @@ test('getTelemetryRecords', async (t) => {
       status: 'critical',
     })
     assert.deepEqual(records.map(storedFields), [
-      testReadings[3],
+      publicFields(testReadings[3]),
     ])
   })
 
@@ -71,7 +83,7 @@ test('getTelemetryRecords', async (t) => {
       satelliteId: 'PHOTON-01',
       status: 'anomaly',
     })
-    assert.deepEqual(records.map(storedFields), [testReadings[1]])
+    assert.deepEqual(records.map(storedFields), [publicFields(testReadings[1])])
   })
 
   await t.test('orders by the public satelliteId and status names', () => {
@@ -79,7 +91,7 @@ test('getTelemetryRecords', async (t) => {
       orderBy: 'satelliteId',
       orderDirection: 'asc',
     })
-    assert.deepEqual(bySatellite.map(record => record.satellite_id), [
+    assert.deepEqual(bySatellite.map(record => record.satelliteId), [
       'AURORA-3',
       'AURORA-3',
       'PHOTON-01',
@@ -90,7 +102,7 @@ test('getTelemetryRecords', async (t) => {
       orderBy: 'status',
       orderDirection: 'asc',
     })
-    assert.deepEqual(byStatus.map(record => record.health_status), [
+    assert.deepEqual(byStatus.map(record => record.status), [
       'anomaly',
       'critical',
       'healthy',
@@ -149,7 +161,7 @@ test('getTelemetryRecordById', async (t) => {
   seedDatabase(db)
   const record = getTelemetryRecordById(db, '2')
   assert.ok(record)
-  assert.deepEqual(record.id, 2)
+  assert.equal(record.id, '2')
 })
 
 test('getTelemetryRecordById on missing record', async (t) => {
@@ -157,4 +169,51 @@ test('getTelemetryRecordById on missing record', async (t) => {
   seedDatabase(db)
   const record = getTelemetryRecordById(db, '999')
   assert.deepEqual(record, null)
+})
+
+test('createTelemetryRecord returns the existing row for the same satellite and instant', (t) => {
+  const db = createTempDatabase(t)
+  seedDatabase(db)
+  const reading = {
+    satelliteId: 'PHOTON-01',
+    status: 'healthy' as const,
+    altitude: 100,
+    velocity: 10,
+  }
+
+  const created = createTelemetryRecord(db, {
+    ...reading,
+    timestamp: '2026-09-26T12:00:00Z',
+  })
+  const replay = createTelemetryRecord(db, {
+    ...reading,
+    timestamp: '2026-09-26T12:00:00.000Z',
+  })
+
+  assert.equal(replay.id, created.id)
+  assert.equal(replay.timestamp, '2026-09-26T12:00:00.000Z')
+  assert.equal(
+    getTelemetryRecords(db, { satelliteId: 'PHOTON-01' })
+      .filter(record => record.timestamp === '2026-09-26T12:00:00.000Z')
+      .length,
+    1,
+  )
+})
+
+test('createTelemetryRecord rejects a different payload for the same instant', (t) => {
+  const db = createTempDatabase(t)
+  seedDatabase(db)
+  const reading = {
+    timestamp: '2026-09-26T12:00:00Z',
+    satelliteId: 'PHOTON-01',
+    status: 'healthy' as const,
+    altitude: 100,
+    velocity: 10,
+  }
+
+  createTelemetryRecord(db, reading)
+  assert.throws(
+    () => createTelemetryRecord(db, { ...reading, altitude: 200 }),
+    TelemetryConflictError,
+  )
 })

@@ -21,7 +21,7 @@ export const OrderDirectionSchema = z.enum(['asc', 'desc'])
 
 export type HealthStatus = z.infer<typeof HealthStatusSchema>
 
-export const TelemetryRecordSchema = z.object({
+export const TelemetryRecordDBSchema = z.object({
   id: z.number(),
   satellite_id: z.string(),
   latitude: z.number().nullable(),
@@ -32,6 +32,21 @@ export const TelemetryRecordSchema = z.object({
   health_status: HealthStatusSchema,
   created_at: z.string(),
 })
+
+/* 
+Reconcile SQLite column case insensitivity with api requirement of camel case standard.
+*/
+export const TelemetryRecordSchema = TelemetryRecordDBSchema.transform((record) => ({
+  id: record.id.toString(),
+  satelliteId: record.satellite_id,
+  latitude: record.latitude,
+  longitude: record.longitude,
+  timestamp: record.timestamp,
+  altitude: record.altitude,
+  velocity: record.velocity,
+  status: record.health_status,
+  createdAt: record.created_at,
+}))
 
 export type TelemetryRecord = z.infer<typeof TelemetryRecordSchema>
 
@@ -55,21 +70,17 @@ export const OrderTelemetryColumnsSchema = z.enum(
   Object.keys(orderColumnByName) as [keyof typeof orderColumnByName, ...(keyof typeof orderColumnByName)[]],
 )
 
-const OrderByColumnSchema = OrderTelemetryColumnsSchema.transform(
-  (value) => orderColumnByName[value],
-)
-
 export const GetTelemetryRecordsOptionsSchema = z.object({
   id: z.string().optional(),
-  limit: z.number().int().nonnegative().optional(),
-  offset: z.number().int().nonnegative().optional(),
-  orderBy: OrderByColumnSchema.optional(),
+  limit: z.coerce.number().int().nonnegative().optional(),
+  offset: z.coerce.number().int().nonnegative().optional(),
+  orderBy: OrderTelemetryColumnsSchema.optional(),
   orderDirection: OrderDirectionSchema.optional(),
   satelliteId: z.string().optional(),
   status: HealthStatusSchema.optional()
 })
 
-export type GetTelemetryRecordsOptions = z.input<typeof GetTelemetryRecordsOptionsSchema>
+export type GetTelemetryRecordsOptions = z.output<typeof GetTelemetryRecordsOptionsSchema>
 
 function appendEquals (
   clauses: string[],
@@ -82,7 +93,10 @@ function appendEquals (
   params.push(value)
 }
 
-export function getTelemetryRecords (db: SqliteDatabase, options: GetTelemetryRecordsOptions = {}): TelemetryRecord[] {
+export function getTelemetryRecords (
+  db: SqliteDatabase,
+  options: GetTelemetryRecordsOptions = {},
+): z.output<typeof TelemetryRecordSchema>[] {
   const parsed = GetTelemetryRecordsOptionsSchema.parse(options)
   const clauses: string[] = []
   const params: Array<string | number> = []
@@ -98,7 +112,7 @@ export function getTelemetryRecords (db: SqliteDatabase, options: GetTelemetryRe
 
   if (parsed.orderBy !== undefined) {
     const direction = parsed.orderDirection === 'desc' ? 'DESC' : 'ASC'
-    query += ` ORDER BY ${parsed.orderBy} ${direction}`
+    query += ` ORDER BY ${orderColumnByName[parsed.orderBy]} ${direction}`
   }
 
   if (parsed.limit !== undefined) {
@@ -113,11 +127,63 @@ export function getTelemetryRecords (db: SqliteDatabase, options: GetTelemetryRe
     params.push(parsed.offset)
   }
 
-  return db.prepare(query).all(...params).map(row => TelemetryRecordSchema.parse(row))
+  const rows = db.prepare(query).all(...params).map(row => TelemetryRecordDBSchema.parse(row))
+  return TelemetryRecordSchema.array().parse(rows)
 }
 
-export function getTelemetryRecordById (db: SqliteDatabase, id: string): TelemetryRecord | null{
+export function getTelemetryRecordById (
+  db: SqliteDatabase,
+  id: string,
+): z.output<typeof TelemetryRecordSchema> | null {
   const row = db.prepare('SELECT * FROM telemetry WHERE id = ?').get(id)
-  const result =TelemetryRecordSchema.safeParse(row)
-  return result.success ? result.data : null
+  return TelemetryRecordSchema.safeParse(row).success ? TelemetryRecordSchema.parse(row) : null
+}
+
+export const CreateTelemetryRecordRequestSchema = z.object({
+  timestamp: z.iso.datetime().transform((value) => new Date(value).toISOString()),
+  satelliteId: z.string(),
+  status: HealthStatusSchema,
+  altitude: z.number().nonnegative(),
+  velocity: z.number().nonnegative(),
+})
+
+export class TelemetryConflictError extends Error {
+  constructor () {
+    super('Telemetry record already exists for this satellite and timestamp with different values')
+    this.name = 'TelemetryConflictError'
+  }
+}
+
+/* 
+Create a telemetry record.
+If the record already exists with the same values, return the existing record.
+If the record is different, throw a conflict error.
+*/
+export function createTelemetryRecord (
+  db: SqliteDatabase,
+  record: z.input<typeof CreateTelemetryRecordRequestSchema>,
+): z.output<typeof TelemetryRecordSchema> {
+  const parsed = CreateTelemetryRecordRequestSchema.parse(record)
+  const insert = db.prepare(`
+    INSERT INTO telemetry (
+      satellite_id, latitude, longitude, timestamp, altitude, velocity, health_status
+    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+    RETURNING *
+  `)
+
+  try {
+    const row = insert.get(parsed.satelliteId, 0, 0, parsed.timestamp, parsed.altitude, parsed.velocity, parsed.status)
+    return TelemetryRecordSchema.parse(row)
+  } catch (error) {
+    if (!((error instanceof Database.SqliteError) && error.code === 'SQLITE_CONSTRAINT_UNIQUE')) throw error
+
+    const existing = db
+      .prepare('SELECT * FROM telemetry WHERE satellite_id = ? AND timestamp = ?')
+      .get(parsed.satelliteId, parsed.timestamp)
+    const stored = TelemetryRecordSchema.safeParse(existing)
+    if (!stored.success) throw error
+    if (stored.data.altitude === parsed.altitude && stored.data.velocity === parsed.velocity && stored.data.status === parsed.status) return stored.data
+
+    throw new TelemetryConflictError()
+  }
 }

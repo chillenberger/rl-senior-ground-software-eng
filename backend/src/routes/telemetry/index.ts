@@ -3,10 +3,11 @@ import { z } from 'zod'
 import { 
   getTelemetryRecords, 
   getTelemetryRecordById, 
-  HealthStatusSchema, 
-  OrderTelemetryColumnsSchema, 
-  OrderDirectionSchema,
-  TelemetryRecordSchema
+  HealthStatusSchema,
+  CreateTelemetryRecordRequestSchema,
+  createTelemetryRecord,
+  GetTelemetryRecordsOptionsSchema,
+  TelemetryConflictError,
 } from '../../db/database'
 import type { GetTelemetryRecordsOptions } from '../../db/database'
 
@@ -19,30 +20,10 @@ const TelemetryRecordResponseSchema = z.object({
   velocity: z.number(),
 })
 
-/* 
-Reconcile SQLite column case insensitivity with api requirement of camel case standard.
-*/
-const toTelemetryRecordResponseSchema = TelemetryRecordSchema.transform((record) => ({
-  id: record.id.toString(),
-  timestamp: record.timestamp,
-  satelliteId: record.satellite_id,
-  status: record.health_status,
-  altitude: record.altitude,
-  velocity: record.velocity,
-})).pipe(TelemetryRecordResponseSchema)
-
 const telemetry: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
   fastify.get('/', {
     schema: {
-      querystring: z.object({
-        id: z.string().optional(),
-        limit: z.coerce.number().int().nonnegative().optional(),
-        offset: z.coerce.number().int().nonnegative().optional(),
-        orderBy: OrderTelemetryColumnsSchema.optional(),
-        orderDirection: OrderDirectionSchema.optional(),
-        satelliteId: z.string().optional(),
-        status: HealthStatusSchema.optional(),
-      }).strict(),
+      querystring: GetTelemetryRecordsOptionsSchema.strict().extend({}),
       response: {
         200: z.array(TelemetryRecordResponseSchema),
       },
@@ -54,9 +35,7 @@ const telemetry: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
       orderDirection: request.query.orderDirection ?? 'desc',
     }
 
-    const telemetryRecords = getTelemetryRecords(fastify.db, options)
-
-    return toTelemetryRecordResponseSchema.array().parse(telemetryRecords)
+    return getTelemetryRecords(fastify.db, options)
   })
 
   fastify.get('/:telemetry_id', {
@@ -73,7 +52,25 @@ const telemetry: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
     if (!record) {
       throw fastify.httpErrors.notFound('Telemetry record not found')
     }
-    return toTelemetryRecordResponseSchema.parse(record)
+    return record
+  })
+
+  fastify.post('/', {
+    schema: {
+      body: CreateTelemetryRecordRequestSchema.strict(),
+      response: {
+        200: TelemetryRecordResponseSchema,
+      }
+    },
+  }, async function (request) {
+    try {
+      return createTelemetryRecord(fastify.db, request.body)
+    } catch (error) {
+      if (error instanceof TelemetryConflictError) {
+        throw fastify.httpErrors.conflict(error.message)
+      }
+      throw error
+    }
   })
 }
 

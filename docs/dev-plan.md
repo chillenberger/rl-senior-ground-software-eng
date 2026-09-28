@@ -8,8 +8,7 @@ This is a satellite telemetry dashboard Rocket Lab. It consists of two parts:
 ## Project Notes
 - all units are in metric: standard engineering and scientific globally understood. 
 - db names in snake_case. API JSON stays camelCase; map between them in the route, removes sqlite folding.
-- Deduplication 
-- idempotency
+- Deduplication and idempotency: UNIQUE (satellite_id, timestamp). Timestamps are stored as canonical UTC. A matching replay returns the existing row; a different payload at that instant is a 409.
 
 
 ## Backend
@@ -74,6 +73,7 @@ Telemetry
 ### Features
 - Caching with quary params
 - Filter / Sort / Pagination
+- Telemetry POST deduplication and idempotency via UNIQUE (satellite_id, timestamp): a matching replay returns the stored row, and a different payload at that instant returns 409. 
 
 ### Consumers
 #TODO: One or many? Security? Login? 

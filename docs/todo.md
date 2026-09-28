@@ -23,7 +23,9 @@ Implement the following API endpoints:
   [x] status: Filter by health status (e.g., “healthy”, “critical”).
 
 [ ] POST /telemetry: Add a new telemetry entry.
-  [ ] Request body should include:
+  [x] Deduplication 
+  [x] Indempotency
+  [x] Request body should include:
 ```
 {
 "satelliteId": "string",
