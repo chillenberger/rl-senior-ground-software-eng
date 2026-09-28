@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import * as assert from 'node:assert'
 import { build, seedDatabase, testReadings } from '../../helper'
-import { getTelemetryRecords } from '../../../src/db/database'
+import { getTelemetryRecords } from '../../../src/db/queries'
 
 test('delete telemetry record', async (t) => {
   const app = await build(t)

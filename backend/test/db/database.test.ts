@@ -1,6 +1,12 @@
 import { test } from 'node:test'
 import * as assert from 'node:assert'
-import { createTelemetryRecord, getTelemetryRecords, getTelemetryRecordById, TelemetryConflictError, TelemetryRecordNotFoundError, type TelemetryRecord } from '../../src/db/database'
+import { 
+  createTelemetryRecord, 
+  getTelemetryRecords, 
+  getTelemetryRecordById, 
+  TelemetryConflictError, 
+  TelemetryRecordNotFoundError, 
+  type TelemetryRecord } from '../../src/db/queries'
 import { createTempDatabase, seedDatabase, testReadings } from '../helper'
 
 function storedFields (record: TelemetryRecord) {

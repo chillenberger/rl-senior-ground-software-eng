@@ -11,8 +11,8 @@ import {
   UnknownSatelliteError,
   deleteTelemetryRecordById,
   TelemetryRecordNotFoundError,
-} from '../../db/database'
-import type { GetTelemetryRecordsOptions } from '../../db/database'
+} from '../../db/queries'
+import type { GetTelemetryRecordsOptions } from '../../db/queries'
 
 const TelemetryRecordResponseSchema = z.object({
   id: z.string(),
