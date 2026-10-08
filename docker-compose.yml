@@ -1,0 +1,15 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    image: rocket-lab-telemetry-api
+    ports:
+      - "3000:3000"
+    environment:
+      PORT: "3000"
+      SQLITE_PATH: /data/telemetry.sqlite
+    volumes:
+      - telemetry:/data
+
+volumes:
+  telemetry:

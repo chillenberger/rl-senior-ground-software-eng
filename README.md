@@ -60,6 +60,22 @@ npm run dev
 
 This starts the API: [http://localhost:3000](http://localhost:3000)
 
+### Backend with Docker
+
+From the repository root:
+
+```bash
+docker compose up --build
+```
+
+The API listens on [http://localhost:3000](http://localhost:3000). The first start creates a SQLite file in a Docker volume and loads the sample satellites. Later starts reuse that file.
+
+To build and run the image on its own:
+
+```bash
+docker build -t rocket-lab-telemetry-api backend
+docker run --rm -p 3000:3000 rocket-lab-telemetry-api
+```
 
 ### Start the Frontend
 From `frontend/` run the following commands

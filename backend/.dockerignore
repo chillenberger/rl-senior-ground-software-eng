@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+test
+*.sqlite
+*.sqlite3
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+.git
+*.md
