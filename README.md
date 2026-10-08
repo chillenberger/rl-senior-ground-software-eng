@@ -16,20 +16,20 @@ This is an npm monorepo with two decoupled apps:
 The frontend dashboard uses the backend, rather than a mock server, to display information. 
 
 Key features include: 
-- Heartbeat with a interval ping to inform user if connection is lost and regained
+- Heartbeat with a interval ping to inform user of api connection status
 - Satellite overview section showing most recent health status metrics
   - This is only the most recent and therefore the current satellite state
-  - Updates on changes to telemetry readings. 
-  - color coded to call out unhealthy metrics. 
+  - This will updates on changes to telemetry rows from the dashboard 
+  - It is color coded to draw attention to unhealthy metrics
 - Telemetry table
   - paginated
   - sortable on timestamp, altitude, velocity
-  - filterable on satellite id and status
-  - can hard delete telemetry readings
-  - can add telemetry readings
+  - filterable on satellite id and health status
+  - allows user to hard delete telemetry readings
+  - allows user to add telemetry readings
     - client side checks on form
-  - color coded entries bring attention to unhealthy telemetry readings
-- Toast system to collocate all error messages.
+  - color coded entries draw attention to unhealthy telemetry readings
+- Toast system to colocate all error messages.
 - Loading spinner
 - Tests
 
