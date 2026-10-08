@@ -64,47 +64,43 @@ Objective: Design and implement a web interface to display and manage satellite 
 ### Requirements: 
 #### 1. Features
 Build a web application with the following functionality:
-[ ] Display a table of telemetry data with columns: 
-  [ ] Satellite ID, 
-  [ ] Timestamp,
-  [ ] Altitude, 
-  [ ] Velocity, 
-  [ ] Health Status.
+[x] Display a table of telemetry data with columns: 
+  [x] Satellite ID, 
+  [x] Timestamp,
+  [x] Altitude, 
+  [x] Velocity, 
+  [x] Health Status.
 
-[ ] Allow users to filter telemetry data by Satellite ID and Health Status.
-[ ] Provide a form to add new telemetry entries.
-[ ] Allow users to delete telemetry entries. (hard delete)
+[x] Allow users to filter telemetry data by Satellite ID and Health Status.
+[x] Provide a form to add new telemetry entries.
+[x] Allow users to delete telemetry entries. (hard delete)
 
 
 #### 2. Mock API or Backend Integration
-[ ] You may use the backend API provided in the test or create a mock API for
+[x] You may use the backend API provided in the test or create a mock API for
 the frontend task.
-[ ] If using a mock API, simulate the following endpoints:
-[ ] GET /telemetry: Returns a list of telemetry data.
-[ ] POST /telemetry: Accepts a new telemetry entry.
-[ ] DELETE /telemetry/:id: Deletes a telemetry entry.
 
 #### 3. Design
-[ ] Use a modern frontend framework (e.g., React, Angular, Vue).
-[ ] Ensure the UI is responsive and user-friendly.
+[x] Use a modern frontend framework (e.g., React, Angular, Vue).
+[x] Ensure the UI is responsive and user-friendly.
 
 #### 4. Implementation Details
-[ ] Use state management (e.g., React’s useState or Redux) to manage telemetry
+[x] Use state management (e.g., React’s useState or Redux) to manage telemetry
 data.
-[ ] Validate form inputs before sending data to the backend or mock API.
+[x] Validate form inputs before sending data to the backend or mock API.
 
 #### Bonus Features
-[ ] Add sorting functionality to the table (e.g., sort by Timestamp, Altitude, or Velocity).
-[ ] Implement error handling for API requests (e.g., display error messages if the
+[x] Add sorting functionality to the table (e.g., sort by Timestamp, Altitude, or Velocity).
+[x] Implement error handling for API requests (e.g., display error messages if the
 backend is unreachable).
-[ ] Include unit tests for key components.
-[ ] Add a loading spinner while fetching data from the backend or mock API.
+[x] Include unit tests for key components.
+[x] Add a loading spinner while fetching data from the backend or mock API.
 
 ## Review 
 [ ] init boilerplate code removed
   [ ] BE support plugin, 
   [ ] FE assets
-  [ ] ...
+[ ] All tests pass
 
 ## Submission Guidelines
 ### Backend Task

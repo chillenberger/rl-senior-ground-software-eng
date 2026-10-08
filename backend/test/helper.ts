@@ -48,8 +48,6 @@ export const testReadings = [
   {
     id: '1',
     satellite_id: 'PHOTON-01',
-    latitude: 10,
-    longitude: 20,
     timestamp: '2026-09-25T16:00:00.000Z',
     altitude: 500000,
     velocity: 7.5,
@@ -58,8 +56,6 @@ export const testReadings = [
   {
     id: '2',
     satellite_id: 'PHOTON-01',
-    latitude: 11,
-    longitude: 21,
     timestamp: '2026-09-25T17:00:00.000Z',
     altitude: 510000,
     velocity: 8,
@@ -68,8 +64,6 @@ export const testReadings = [
   {
     id: '3',
     satellite_id: 'AURORA-3',
-    latitude: null,
-    longitude: null,
     timestamp: '2026-09-25T16:20:00.000Z',
     altitude: 700000,
     velocity: 7,
@@ -78,8 +72,6 @@ export const testReadings = [
   {
     id: '4',
     satellite_id: 'AURORA-3',
-    latitude: 40,
-    longitude: -74,
     timestamp: '2026-09-25T16:55:00.000Z',
     altitude: 450000,
     velocity: 6.5,
@@ -95,9 +87,9 @@ function seedDatabase (db: SqliteDatabase): void {
 
   const insertTelemetry = db.prepare(`
     INSERT INTO telemetry (
-      satellite_id, latitude, longitude, timestamp, altitude, velocity, health_status
+      satellite_id, timestamp, altitude, velocity, health_status
     ) VALUES (
-      @satellite_id, @latitude, @longitude, @timestamp, @altitude, @velocity, @health_status
+      @satellite_id, @timestamp, @altitude, @velocity, @health_status
     )
   `)
   for (const reading of testReadings) {

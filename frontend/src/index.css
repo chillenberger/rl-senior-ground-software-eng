@@ -64,6 +64,7 @@
 
 body {
   margin: 0;
+  background: radial-gradient(ellipse at bottom center, #424242 -25%, #000 75%);
 }
 
 h1,

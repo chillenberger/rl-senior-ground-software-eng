@@ -1,60 +1,76 @@
 # Rocket Lab Satellite Telemetry
 
-A small system for viewing and managing satellite telemetry: where a satellite was, how fast it was moving, and whether it looked healthy.
+A small system for viewing and managing satellite telemetry.
 
-## Purpose
-
-Ground operators need a straightforward way to record readings, look them up, filter them, and remove bad ones. This repository is that system. A REST API stores the data, and a web dashboard is the place you work with it.
-
-The product requirements live in [`docs/client-task.md`](docs/client-task.md). That file is the source of truth. Fit the code to it; do not edit it to match the code.
 
 ## Overview
 
-This is an npm monorepo with two apps:
+This is an npm monorepo with two decoupled apps:
 
 | App | Role | Stack |
 | --- | --- | --- |
 | `backend/` | Telemetry API | TypeScript, Fastify, SQLite (`better-sqlite3`) |
 | `frontend/` | Dashboard | TypeScript, React, Vite |
 
-The dashboard talks to the API. It does not use a mock server.
+### Frontend
+The frontend dashboard uses the backend, rather than a mock server, to display information. 
 
-A reading includes a satellite id, an ISO 8601 timestamp, altitude, velocity, and a health status (`healthy`, `anomaly`, or `critical`). Latitude and longitude are optional.
+Key features include: 
+- Heartbeat with a interval ping to inform user if connection is lost and regained
+- Satellite overview section showing most recent health status metrics
+  - This is only the most recent and therefore the current satellite state
+  - Updates on changes to telemetry readings. 
+  - color coded to call out unhealthy metrics. 
+- Telemetry table
+  - paginated
+  - sortable on timestamp, altitude, velocity
+  - filterable on satellite id and status
+  - can hard delete telemetry readings
+  - can add telemetry readings
+    - client side checks on form
+  - color coded entries bring attention to unhealthy telemetry readings
+- Toast system to collocate all error messages.
+- Loading spinner
+- Tests
+
+### Backend
+The backend allows users to interact with telemetry data. 
+Features include: 
+- Health check endpoint to easily see if server and database are online. 
+- Satellite endpoint to allow for easily viewing available satellites and their most current state. 
+- Telemetry endpoint
+  - get all telemetry, paginated, filtered, sorted
+  - delete a telemetry entry by id
+  - add a telemetry entry
+- In memory DB using SQLite.
+- Tests
 
 ## Getting started
 
 You need **Node.js 22 or newer**. `better-sqlite3` compiles a native addon during install, so the machine also needs a C toolchain (on macOS, the Xcode command line tools).
 
-From the repository root:
+### Start the Backend
+From `backend/` run the following commands
 
 ```bash
 npm install
-npm run install:all
 npm run seed
 npm run dev
 ```
 
-`npm install` only sets up the root scripts. `npm run install:all` installs the frontend and backend.
+This starts the API: [http://localhost:3000](http://localhost:3000)
 
-That starts both apps:
 
-- API: [http://localhost:3000](http://localhost:3000)
+### Start the Frontend
+From `frontend/` run the following commands
+
+
+```bash
+npm install 
+npm run dev
+```
+
 - Dashboard: [http://localhost:5173](http://localhost:5173)
-
-Run one side on its own:
-
-```bash
-npm run dev:backend
-npm run dev:frontend
-```
-
-Build both, then run the API and a local preview of the dashboard:
-
-```bash
-npm run build
-npm start --prefix backend
-npm run preview --prefix frontend
-```
 
 Backend tests:
 
@@ -62,5 +78,8 @@ Backend tests:
 npm test --prefix backend
 ```
 
-## Docs 
-Refer to `/docs` for design decisions, client needs, development plan, running task list. 
+Frontend tests: 
+```bash
+npm test --prefix frontend
+```
+

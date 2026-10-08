@@ -18,7 +18,7 @@ This is a satellite telemetry dashboard Rocket Lab. It consists of two parts:
 - Framework: Fastify
   Benefits: Fast, builtin schema validation, large community and support.
 - DB: SQLite: in memory per document: client-task.md section: backend step: 2 
-- Testing: #TODO:
+- Testing
 - Package Manager: npm - simple good for small project no setup
 
 
@@ -43,7 +43,7 @@ This is a satellite telemetry dashboard Rocket Lab. It consists of two parts:
 - db entry types do not need to match API types.
 - seed via bash script, reduces boiler plat and makes data easier to read since we can save as an object.
 - split schema and migration to split concerns.  
-- ORM #TODO: maybe Drizzle if felt it cleans up the code or conveys knowledge. 
+- ORM - chose not to use an ORM, it is overkill for this project. 
 - Snake_case: SQLite is case insensitive. 
 
 #### Satellites
@@ -54,15 +54,12 @@ This is a satellite telemetry dashboard Rocket Lab. It consists of two parts:
   updated_at: ISO 8601 datetime
 }
 
-- Not delete option for now
-
+- No delete option for now
 
 Telemetry
 {
   id: number (sequential since read write filter by could be often)
   satellite_id: string (link satellite table )
-  latitude: number
-  longitude: number 
   timestamp: ISO 8601 datetime (data timestamp)
   altitude: number (meters)
   velocity: number (km / s)
@@ -76,7 +73,7 @@ Telemetry
 - Telemetry POST deduplication and idempotency via UNIQUE (satellite_id, timestamp): a matching replay returns the stored row, and a different payload at that instant returns 409. 
 
 ### Consumers
-#TODO: One or many? Security? Login? 
+- only Dashboard no security credentials or login 
 
 
 
@@ -88,10 +85,25 @@ The instructions say we have the choice of mocking the backend, as I am building
 ### Stack
 - Language: Typescript
 - Framework: React 
-- State Management: #TODO:
-- Testing: #TODO:
+- State Management: Use state will be enough for this project, Redux is overkill. 
+- Testing: vita testing
 - Bundler and dev: Vita - Fast development speed, modern, simple, typescript support
 - Package Manager: npm - simple good for small project no setup. 
 
 ### Features 
 - Filter / Sort / Pagination
+
+### Design
+#### Page 
+- Single page
+- Sections order (Title, satellite overview, telemetry table )
+
+#### Telemetry Table
+- paginated in groups of 10
+- Sortable on altitude, velocity, status, satellite id
+- filter by satellite id.
+- Row outline color depends on status red = critical, yellow=anomaly else no outline
+- add telemetry entry top right with + sign, this brings up a popup form that auto closes on success and notification. 
+#### Notification system
+- shows up in top right of page. 
+

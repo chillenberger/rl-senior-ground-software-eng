@@ -13,6 +13,11 @@ type TelemetryBody = {
   velocity: number
 }
 
+type TelemetryPage = {
+  records: TelemetryBody[]
+  hasMore: boolean
+}
+
 test('get telemetry records with filters', async (t) => {
   const app = await build(t)
   seedDatabase(app.db)
@@ -27,7 +32,9 @@ test('get telemetry records with filters', async (t) => {
   })
 
   assert.equal(res.statusCode, 200)
-  const records = res.json<TelemetryBody[]>()
+  const body = res.json<TelemetryPage>()
+  assert.equal(body.hasMore, false)
+  const records = body.records
   assert.equal(records.length, 1)
   assert.equal(records[0].satelliteId, healthyPhoton.satellite_id)
   assert.equal(records[0].status, healthyPhoton.health_status)
@@ -48,8 +55,44 @@ test('missing limit filter returns all rows', async (t) => {
   })
 
   assert.equal(res.statusCode, 200)
-  const records = res.json<TelemetryBody[]>()
-  assert.equal(records.length, testReadings.length)
+  const body = res.json<TelemetryPage>()
+  assert.equal(body.hasMore, false)
+  assert.equal(body.records.length, testReadings.length)
+})
+
+test('limit reports whether another page exists', async (t) => {
+  const app = await build(t)
+  seedDatabase(app.db)
+
+  const firstPage = await app.inject({
+    url: '/telemetry',
+    query: { limit: '2' },
+  })
+
+  assert.equal(firstPage.statusCode, 200)
+  const first = firstPage.json<TelemetryPage>()
+  assert.equal(first.hasMore, true)
+  assert.deepEqual(first.records.map(record => record.id), ['2', '4'])
+
+  const lastPage = await app.inject({
+    url: '/telemetry',
+    query: { limit: '2', offset: '2' },
+  })
+
+  assert.equal(lastPage.statusCode, 200)
+  const last = lastPage.json<TelemetryPage>()
+  assert.equal(last.hasMore, false)
+  assert.deepEqual(last.records.map(record => record.id), ['3', '1'])
+
+  const exactPage = await app.inject({
+    url: '/telemetry',
+    query: { limit: '4' },
+  })
+
+  assert.equal(exactPage.statusCode, 200)
+  const exact = exactPage.json<TelemetryPage>()
+  assert.equal(exact.hasMore, false)
+  assert.equal(exact.records.length, 4)
 })
 
 test('bad filters return 400', async (t) => {
@@ -120,6 +163,39 @@ test('bad filters return 400', async (t) => {
   assert.equal(res.statusCode, 400, "Invalid status should return 400")
 })
 
+test('orderBy altitude and velocity', async (t) => {
+  const app = await build(t)
+  seedDatabase(app.db)
+
+  const byAltitude = await app.inject({
+    url: '/telemetry',
+    query: {
+      orderBy: 'altitude',
+      orderDirection: 'asc',
+    },
+  })
+
+  assert.equal(byAltitude.statusCode, 200)
+  assert.deepEqual(
+    byAltitude.json<TelemetryPage>().records.map(record => record.altitude),
+    [450000, 500000, 510000, 700000],
+  )
+
+  const byVelocity = await app.inject({
+    url: '/telemetry',
+    query: {
+      orderBy: 'velocity',
+      orderDirection: 'desc',
+    },
+  })
+
+  assert.equal(byVelocity.statusCode, 200)
+  assert.deepEqual(
+    byVelocity.json<TelemetryPage>().records.map(record => record.velocity),
+    [8, 7.5, 7, 6.5],
+  )
+})
+
 test('orderBy status uses the public name', async (t) => {
   const app = await build(t)
   seedDatabase(app.db)
@@ -134,7 +210,7 @@ test('orderBy status uses the public name', async (t) => {
 
   assert.equal(res.statusCode, 200)
   assert.deepEqual(
-    res.json<TelemetryBody[]>().map(record => record.status),
+    res.json<TelemetryPage>().records.map(record => record.status),
     ['anomaly', 'critical', 'healthy', 'healthy'],
   )
 })

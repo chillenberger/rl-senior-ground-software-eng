@@ -1,0 +1,223 @@
+.telemetry-table {
+  text-align: left;
+}
+
+.telemetry-table__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  flex-wrap: wrap;
+  margin: 1.75rem 0 0.75rem;
+}
+
+.telemetry-table__header h2 {
+  margin: 0;
+}
+
+.telemetry-table__add {
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #fff;
+  background: var(--accent);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 0.4rem 0.85rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.telemetry-table__add:hover {
+  background: color-mix(in srgb, var(--accent) 88%, #000);
+}
+
+.telemetry-table__add:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .telemetry-table__add {
+    color: #1a1024;
+  }
+
+  .telemetry-table__add:hover {
+    background: color-mix(in srgb, var(--accent) 88%, #fff);
+  }
+}
+
+.telemetry-table__scroll {
+  overflow-x: auto;
+}
+
+.telemetry-table__table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 0.4rem;
+  font-size: 0.95rem;
+}
+
+.telemetry-table__table th,
+.telemetry-table__table td {
+  padding: 0.55rem 0.75rem;
+  white-space: nowrap;
+}
+
+.telemetry-table__table th {
+  border-bottom: 1px solid var(--border);
+  color: var(--text-h);
+  font-weight: 500;
+}
+
+.telemetry-table__table td {
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid var(--border);
+}
+
+.telemetry-table__numeric {
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+.telemetry-table__numeric .telemetry-table__sort {
+  width: 100%;
+  justify-content: flex-end;
+}
+
+.telemetry-table__heading,
+.telemetry-table__sort,
+.telemetry-table__filter {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.telemetry-table__filter select {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.2rem 0.4rem;
+}
+
+.telemetry-table__filter select:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.telemetry-table__sort {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.telemetry-table__sort:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.telemetry-table__unit {
+  color: var(--text);
+  font-size: 0.75rem;
+  font-weight: 400;
+}
+
+.telemetry-table__indicator {
+  display: inline-block;
+  width: 0.8rem;
+}
+
+.telemetry-table__empty {
+  color: var(--text);
+  text-align: left;
+}
+
+.telemetry-table__actions {
+  text-align: end;
+}
+
+.telemetry-table__delete {
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.25rem 0.6rem;
+  cursor: pointer;
+}
+
+.telemetry-table__delete:disabled {
+  color: var(--text);
+  cursor: default;
+  opacity: 0.6;
+}
+
+.telemetry-table__delete:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.telemetry-table__table tr[data-status='critical'] td {
+  border-top-color: #d64545;
+  border-bottom-color: #d64545;
+}
+
+.telemetry-table__table tr[data-status='critical'] td:first-child {
+  border-left: 1px solid #d64545;
+}
+
+.telemetry-table__table tr[data-status='critical'] td:last-child {
+  border-right: 1px solid #d64545;
+}
+
+.telemetry-table__table tr[data-status='anomaly'] td {
+  border-top-color: #c49212;
+  border-bottom-color: #c49212;
+}
+
+.telemetry-table__table tr[data-status='anomaly'] td:first-child {
+  border-left: 1px solid #c49212;
+}
+
+.telemetry-table__table tr[data-status='anomaly'] td:last-child {
+  border-right: 1px solid #c49212;
+}
+
+.telemetry-table__pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.75rem;
+  color: var(--text);
+  font-size: 0.9rem;
+}
+
+.telemetry-table__pager button {
+  font: inherit;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.35rem 0.7rem;
+  cursor: pointer;
+}
+
+.telemetry-table__pager button:disabled {
+  color: var(--text);
+  cursor: default;
+  opacity: 0.6;
+}
+
+.telemetry-table__pager button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

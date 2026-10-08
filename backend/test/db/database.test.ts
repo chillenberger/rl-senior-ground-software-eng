@@ -18,8 +18,6 @@ function storedFields (record: TelemetryRecord) {
 function publicFields (reading: typeof testReadings[number]) {
   return {
     satelliteId: reading.satellite_id,
-    latitude: reading.latitude,
-    longitude: reading.longitude,
     timestamp: reading.timestamp,
     altitude: reading.altitude,
     velocity: reading.velocity,
@@ -39,7 +37,7 @@ test('getTelemetryRecords', async (t) => {
   const db = createTempDatabase(t)
   seedDatabase(db)
 
-  await t.test('returns every seeded row, including null coordinates', () => {
+  await t.test('returns every seeded row', () => {
     const records = getTelemetryRecords(db)
 
     assert.equal(records.length, testReadings.length)
@@ -50,8 +48,6 @@ test('getTelemetryRecords', async (t) => {
 
     const generated = records.find(record => record.timestamp === '2026-09-25T16:20:00.000Z')
     assert.ok(generated)
-    assert.equal(generated.latitude, null)
-    assert.equal(generated.longitude, null)
     assert.equal(typeof generated.id, 'string')
     assert.equal(typeof generated.createdAt, 'string')
     assert.ok(generated.createdAt.length > 0)

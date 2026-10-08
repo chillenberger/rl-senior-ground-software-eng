@@ -2,11 +2,13 @@ import { test } from 'node:test'
 import * as assert from 'node:assert'
 import { build } from '../helper'
 
-test('default root route', async (t) => {
+test('health route reports the API is up', async (t) => {
   const app = await build(t)
 
   const res = await app.inject({
-    url: '/'
+    url: '/health',
   })
-  assert.deepStrictEqual(JSON.parse(res.payload), { root: true })
+
+  assert.equal(res.statusCode, 200)
+  assert.deepStrictEqual(res.json(), { status: 'ok' })
 })

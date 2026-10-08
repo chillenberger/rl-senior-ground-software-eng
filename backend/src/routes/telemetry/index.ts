@@ -28,17 +28,28 @@ const telemetry: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
     schema: {
       querystring: GetTelemetryRecordsOptionsSchema.strict(),
       response: {
-        200: z.array(TelemetryRecordResponseSchema),
+        200: z.object({
+          records: z.array(TelemetryRecordResponseSchema),
+          hasMore: z.boolean(),
+        }),
       },
     },
   }, async function (request) {
+
     const options: GetTelemetryRecordsOptions = {
       ...request.query,
       orderBy: request.query.orderBy ?? 'timestamp',
       orderDirection: request.query.orderDirection ?? 'desc',
+      ...(request.query.limit === undefined ? {} : { limit: request.query.limit + 1 }),
     }
 
-    return getTelemetryRecords(fastify.db, options)
+    const rows = getTelemetryRecords(fastify.db, options)
+    const hasMore = request.query.limit !== undefined && rows.length > request.query.limit
+
+    return {
+      records: hasMore ? rows.slice(0, request.query.limit) : rows,
+      hasMore,
+    }
   })
 
   fastify.get('/:telemetry_id', {

@@ -13,8 +13,6 @@ SQLite is case insensitive, so we use the snake_case column names.
 export const TelemetryRecordDBSchema = z.object({
   id: z.number(),
   satellite_id: z.string(),
-  latitude: z.number().nullable(),
-  longitude: z.number().nullable(),
   timestamp: z.string(),
   altitude: z.number(),
   velocity: z.number(),
@@ -28,8 +26,6 @@ Efficient snake_case to camelCase transformation.
 export const TelemetryRecordSchema = TelemetryRecordDBSchema.transform((record) => ({
   id: record.id.toString(),
   satelliteId: record.satellite_id,
-  latitude: record.latitude,
-  longitude: record.longitude,
   timestamp: record.timestamp,
   altitude: record.altitude,
   velocity: record.velocity,
@@ -43,6 +39,8 @@ const orderColumnByName = {
   status: 'health_status',
   createdAt: 'created_at',
   timestamp: 'timestamp',
+  altitude: 'altitude',
+  velocity: 'velocity',
 } as const
 
 export const OrderTelemetryColumnsSchema = z.enum(
@@ -91,7 +89,7 @@ export function getTelemetryRecords (
 
   if (parsed.orderBy !== undefined) {
     const direction = parsed.orderDirection === 'desc' ? 'DESC' : 'ASC'
-    query += ` ORDER BY ${orderColumnByName[parsed.orderBy]} ${direction}`
+    query += ` ORDER BY ${orderColumnByName[parsed.orderBy]} ${direction}, id ASC`
   }
 
   if (parsed.limit !== undefined) {
@@ -110,6 +108,82 @@ export function getTelemetryRecords (
   return TelemetryRecordSchema.array().parse(rows)
 }
 
+const SatelliteWithLatestReadingDBSchema = z.object({
+  id: z.string(),
+  operator: z.string(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  telemetry_id: z.number().nullable(),
+  timestamp: z.string().nullable(),
+  altitude: z.number().nullable(),
+  velocity: z.number().nullable(),
+  health_status: HealthStatusSchema.nullable(),
+})
+
+export const LatestReadingSchema = z.object({
+  id: z.string(),
+  timestamp: z.string(),
+  altitude: z.number(),
+  velocity: z.number(),
+  status: HealthStatusSchema,
+})
+
+export const SatelliteSummarySchema = z.object({
+  id: z.string(),
+  operator: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  latestReading: LatestReadingSchema.nullable(),
+})
+
+export type SatelliteSummary = z.infer<typeof SatelliteSummarySchema>
+
+/*
+The latest reading is the telemetry row with the newest timestamp.
+A satellite with no readings has latestReading null.
+*/
+export function listSatellites (db: SqliteDatabase): SatelliteSummary[] {
+  const rows = db.prepare(`
+    SELECT
+      satellites.id AS id,
+      satellites.operator AS operator,
+      satellites.created_at AS created_at,
+      satellites.updated_at AS updated_at,
+      latest.id AS telemetry_id,
+      latest.timestamp AS timestamp,
+      latest.altitude AS altitude,
+      latest.velocity AS velocity,
+      latest.health_status AS health_status
+    FROM satellites
+    LEFT JOIN telemetry AS latest
+      ON latest.id = (
+        SELECT telemetry.id
+        FROM telemetry
+        WHERE telemetry.satellite_id = satellites.id
+        ORDER BY telemetry.timestamp DESC, telemetry.id DESC
+        LIMIT 1
+      )
+    ORDER BY satellites.id ASC
+  `).all().map(row => SatelliteWithLatestReadingDBSchema.parse(row))
+
+  return rows.map((row) => {
+    const summary = {
+      id: row.id,
+      operator: row.operator,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      latestReading: row.telemetry_id === null ? null : {
+        id: row.telemetry_id.toString(),
+        timestamp: row.timestamp,
+        altitude: row.altitude,
+        velocity: row.velocity,
+        status: row.health_status,
+      },
+    }
+    return SatelliteSummarySchema.parse(summary)
+  })
+}
+
 export function getTelemetryRecordById (
   db: SqliteDatabase,
   id: string,
@@ -125,8 +199,6 @@ export const CreateTelemetryRecordRequestSchema = z.object({
   status: HealthStatusSchema,
   altitude: z.number().positive(),
   velocity: z.number().positive(),
-  latitude: z.number().min(-90).max(90).nullable().optional().default(null),
-  longitude: z.number().min(-180).max(180).nullable().optional().default(null),
 })
 
 export class TelemetryConflictError extends Error {
@@ -157,8 +229,6 @@ function isSameTelemetryRecord (
   return stored.altitude === record.altitude
     && stored.velocity === record.velocity
     && stored.status === record.status
-    && stored.latitude === record.latitude
-    && stored.longitude === record.longitude
 }
 
 /* 
@@ -173,13 +243,13 @@ export function createTelemetryRecord (
   const parsed = CreateTelemetryRecordRequestSchema.parse(record)
   const insert = db.prepare(`
     INSERT INTO telemetry (
-      satellite_id, latitude, longitude, timestamp, altitude, velocity, health_status
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      satellite_id, timestamp, altitude, velocity, health_status
+    ) VALUES (?, ?, ?, ?, ?)
     RETURNING *
   `)
 
   try {
-    const row = insert.get(parsed.satelliteId, parsed.latitude, parsed.longitude, parsed.timestamp, parsed.altitude, parsed.velocity, parsed.status)
+    const row = insert.get(parsed.satelliteId, parsed.timestamp, parsed.altitude, parsed.velocity, parsed.status)
     return TelemetryRecordSchema.parse(row)
   } catch (error) {
     if (((error instanceof Database.SqliteError) && error.code === 'SQLITE_CONSTRAINT_FOREIGNKEY')) throw new UnknownSatelliteError(parsed.satelliteId)

@@ -1,0 +1,34 @@
+.spinner {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text);
+}
+
+.spinner__ring {
+  width: 0.9rem;
+  height: 0.9rem;
+  flex: none;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 999px;
+  animation: spinner-spin 0.7s linear infinite;
+}
+
+.spinner__label {
+  line-height: 1;
+}
+
+@keyframes spinner-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner__ring {
+    animation: none;
+    border-color: var(--accent);
+    opacity: 0.7;
+  }
+}

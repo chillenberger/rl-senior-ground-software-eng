@@ -18,8 +18,6 @@ END;
 CREATE TABLE IF NOT EXISTS telemetry (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   satellite_id TEXT NOT NULL REFERENCES satellites(id) ON DELETE RESTRICT,
-  latitude REAL CHECK (latitude IS NULL OR (latitude >= -90 AND latitude <= 90)),
-  longitude REAL CHECK (longitude IS NULL OR (longitude >= -180 AND longitude <= 180)),
   timestamp TEXT NOT NULL,
   altitude REAL NOT NULL CHECK (altitude > 0),
   velocity REAL NOT NULL CHECK (velocity > 0),

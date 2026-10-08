@@ -1,0 +1,74 @@
+.heartbeat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1.25rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.heartbeat__indicator {
+  position: relative;
+  width: 0.65rem;
+  height: 0.65rem;
+  flex: none;
+}
+
+.heartbeat__dot,
+.heartbeat__ping {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+}
+
+.heartbeat--connected {
+  color: #15803d;
+}
+
+.heartbeat--connected .heartbeat__dot {
+  background: #22c55e;
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.2);
+}
+
+.heartbeat--connected .heartbeat__ping {
+  background: #22c55e;
+  animation: heartbeat-ping 0.9s cubic-bezier(0, 0, 0.2, 1) forwards;
+}
+
+.heartbeat--disconnected {
+  color: #b91c1c;
+}
+
+.heartbeat--disconnected .heartbeat__dot {
+  background: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+@keyframes heartbeat-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .heartbeat--connected {
+    color: #4ade80;
+  }
+
+  .heartbeat--disconnected {
+    color: #f87171;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heartbeat--connected .heartbeat__ping {
+    animation: none;
+  }
+}

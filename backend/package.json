@@ -13,7 +13,7 @@
     "build:ts": "npm run clean && tsc && mkdir -p dist/db && cp src/db/*.sql dist/db/",
     "watch:ts": "tsc -w",
     "dev": "npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"npm:dev:start\"",
-    "dev:start": "SQLITE_PATH=\"${SQLITE_PATH:-data/telemetry.sqlite}\" fastify start --ignore-watch=.ts$ -w -l info -P dist/app.js",
+    "dev:start": "SQLITE_PATH=\"${SQLITE_PATH:-data/telemetry.sqlite}\" fastify start --ignore-watch=\".ts$ .sqlite\" -w -l info -P dist/app.js",
     "seed": "bash scripts/seed.sh",
     "lint": "eslint ."
   },

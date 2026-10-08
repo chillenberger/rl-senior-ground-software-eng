@@ -1,0 +1,52 @@
+.new-telemetry-form {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.35rem;
+  min-width: min(22rem, 80vw);
+  text-align: left;
+  color: var(--text);
+}
+
+.new-telemetry-form h2 {
+  margin: 0 0 0.5rem;
+}
+
+.new-telemetry-form label {
+  margin-top: 0.45rem;
+  color: var(--text-h);
+  font-size: 0.95rem;
+}
+
+.new-telemetry-form input,
+.new-telemetry-form select,
+.new-telemetry-form button {
+  font: inherit;
+  color: var(--text-h);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.35rem 0.5rem;
+}
+
+.new-telemetry-form button {
+  margin-top: 0.85rem;
+  cursor: pointer;
+}
+
+.new-telemetry-form button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.new-telemetry-form input:focus-visible,
+.new-telemetry-form select:focus-visible,
+.new-telemetry-form button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.new-telemetry-form__error {
+  color: #b42318;
+  margin: 0 0 0.35rem;
+}

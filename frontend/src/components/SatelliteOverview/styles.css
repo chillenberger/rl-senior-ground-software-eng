@@ -1,0 +1,49 @@
+.satellite-overview h2 {
+  margin-bottom: 0.75rem;
+}
+
+.satellite-overview__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.satellite-overview__item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 8.5rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid var(--border);
+  border-left-width: 3px;
+  border-radius: 4px;
+  background: var(--bg);
+}
+
+.satellite-overview__item[data-status='healthy'] {
+  border-left-color: #2f8a4e;
+}
+
+.satellite-overview__item[data-status='anomaly'] {
+  border-left-color: #c49212;
+}
+
+.satellite-overview__item[data-status='critical'] {
+  border-left-color: #d64545;
+}
+
+.satellite-overview__value {
+  font-size: 1.35rem;
+  font-weight: 500;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-h);
+}
+
+.satellite-overview__label {
+  color: var(--text);
+  font-size: 0.9rem;
+}
