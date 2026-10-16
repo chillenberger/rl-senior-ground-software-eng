@@ -8,7 +8,7 @@ import {
   TelemetryRecordNotFoundError, 
   type TelemetryRecord 
 } from '../../src/db/queries'
-import { createTempDatabase, seedDatabase, testReadings } from '../helper'
+import { clearDatabase, createTempDatabase, seedDatabase, testReadings } from '../helper'
 
 function storedFields (record: TelemetryRecord) {
   const { id, createdAt, ...fields } = record
@@ -155,6 +155,7 @@ test('getTelemetryRecords', async (t) => {
 
 test('getTelemetryRecords on an empty database', (t) => {
   const db = createTempDatabase(t)
+  clearDatabase(db)
 
   assert.deepEqual(getTelemetryRecords(db), [])
 })

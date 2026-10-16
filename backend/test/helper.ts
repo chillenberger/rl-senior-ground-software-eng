@@ -79,7 +79,17 @@ export const testReadings = [
   },
 ]
 
+function clearDatabase (db: SqliteDatabase): void {
+  db.exec(`
+    DELETE FROM telemetry;
+    DELETE FROM satellites;
+    DELETE FROM sqlite_sequence WHERE name = 'telemetry';
+  `)
+}
+
 function seedDatabase (db: SqliteDatabase): void {
+  clearDatabase(db)
+
   const insertSatellite = db.prepare('INSERT INTO satellites (id, operator) VALUES (?, ?)')
   for (const satellite of testSatellites) {
     insertSatellite.run(satellite.id, satellite.operator)
@@ -110,6 +120,7 @@ function createTempDatabase (t: TestContext): SqliteDatabase {
 export {
   config,
   build,
+  clearDatabase,
   seedDatabase,
   createTempDatabase
 }

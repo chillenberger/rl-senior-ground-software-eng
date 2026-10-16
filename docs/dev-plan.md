@@ -41,7 +41,7 @@ This is a satellite telemetry dashboard Rocket Lab. It consists of two parts:
 
 ### DB Schema and notes
 - db entry types do not need to match API types.
-- seed via bash script, reduces boiler plat and makes data easier to read since we can save as an object.
+- sample satellites and telemetry live in schema.sql and load when the database opens.
 - split schema and migration to split concerns.  
 - ORM - chose not to use an ORM, it is overkill for this project. 
 - Snake_case: SQLite is case insensitive. 

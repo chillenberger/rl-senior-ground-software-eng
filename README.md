@@ -54,7 +54,6 @@ From `backend/` run the following commands
 
 ```bash
 npm install
-npm run seed
 npm run dev
 ```
 
