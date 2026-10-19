@@ -13,7 +13,6 @@ const telemetryParameters: FastifyPluginAsyncZod = async (fastify): Promise<void
       },
     },
   }, async function (request) {
-    console.log("sat id: ", request.params.satellite_id)
     return getTelemetryParameters(fastify.db, request.params.satellite_id).map(param => param.name)
   })
 }

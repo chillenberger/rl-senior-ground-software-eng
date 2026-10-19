@@ -65,7 +65,7 @@ This application has been updated to handle general derived telemetry.  To do th
  - deprecated_at (to handle equation revs)
  - metadata (for any information the client desires to include like description, rev, ect...)
 
-This system collects data piecewise, meaning we can't guarantee if or when we will have enough information to calculate derived data.  To handle this while limiting database load I implement a cache system that maintains telemetry data by datetime and satellite id. Currently it is optimized for sub thousand parameter systems. For larger systems with lots of inter connections a graph solution is optimal. 
+This system collects data piecewise, meaning we can't guarantee if or when we will have enough information to calculate derived data.  To handle this while limiting database load I implement a cache system that maintains telemetry data by datetime and satellite id. Currently it is optimized for sub thousand parameter systems. For larger systems with lots of inter connections a graph solution is optimal. If less than full data set ingestion is rare, this can be removed for simplicity. 
 
 Calculations are assumed to be fast and therefore not requiring a queue.  
 

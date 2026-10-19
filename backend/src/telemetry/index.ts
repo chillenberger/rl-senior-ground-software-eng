@@ -1,9 +1,12 @@
 import { Parser, type Expression } from 'expr-eval'
 import { 
   getTelemetryParameters, 
+  getTelemetryRecords,
   createTelemetryRecord, 
   getTelemetryParameterByName, 
   getTelemetryParameterCount,
+  getTelemetryRecordById,
+  deleteTelemetryRecordById,
 } from '../db/queries'
 import { SqliteDatabase } from '../db/database'
 import { CreateTelemetryRecord, type TelemetryDefinition } from '../db/types'
@@ -84,6 +87,41 @@ function derivedParameters (db: SqliteDatabase, satelliteId: string): DerivedPar
   return parameters
 }
 
+function dependentDerivedNames (parameters: DerivedParameter[], root: string): string[] {
+  const removed = new Set<string>([root])
+  let progressed = true
+  while (progressed) {
+    progressed = false
+    for (const parameter of parameters) {
+      if (removed.has(parameter.name)) continue
+      if (parameter.required.some((name) => removed.has(name))) {
+        removed.add(parameter.name)
+        progressed = true
+      }
+    }
+  }
+  removed.delete(root)
+  return [...removed]
+}
+
+/*
+The cache holds a packet that is still arriving.
+Once that packet is pruned, the rows stored for the timestamp are the inputs.
+*/
+function measurementPacket (db: SqliteDatabase, satelliteId: string, timestamp: string): Packet {
+  const cached = telemetryCache.get(satelliteId, timestamp)
+  if (cached !== undefined) return cached
+
+  const packet: Packet = {}
+  for (const record of getTelemetryRecords(db, {
+    satelliteId,
+    filterBy: [{ name: 'timestamp', value: timestamp }],
+  })) {
+    packet[record.measurement.name] = record.measurement.value
+  }
+  return packet
+}
+
 function createDerivedRecord (
   satelliteId: string,
   timestamp: string,
@@ -112,10 +150,6 @@ function createDerivedRecord (
     const measurement = { name: parameter.name, value: parsedValue.data }
     const units = parameter.definition.units
     const oos = isOutOfSpec(parameter.definition.spec, measurement)
-    const isValid = isValidValue(parameter.definition.check, measurement)
-
-    // TODO: why throw to swallow
-    if (!isValid) throw new TelemetryCheckFailedError(parameter.name, parsedValue.data)
     return {
       name: parameter.name,
       timestamp,
@@ -152,21 +186,35 @@ function ingestTelemetry(db: SqliteDatabase, data: {satelliteId: string, timesta
     oos,
     ...(units === undefined ? {} : { units }),
   })
-
+  const parameters = derivedParameters(db, record.satelliteId)
+  const packet = measurementPacket(db, record.satelliteId, record.timestamp)
+  packet[record.measurement.name] = record.measurement.value
+  for (const name of dependentDerivedNames(parameters, record.measurement.name)) {
+    delete packet[name]
+  }
   if (!telemetryCache.getSize(record.satelliteId)) {
     telemetryCache.setSize(record.satelliteId, getTelemetryParameterCount(db, record.satelliteId))
   }
-  const packet = telemetryCache.set(record.satelliteId, record.timestamp, data.name, data.value)
+  telemetryCache.setPacket(record.satelliteId, record.timestamp, packet)
+
   const readyToDerived = telemetryCache.getReadyToDerived(
-    derivedParameters(db, record.satelliteId),
+    parameters,
     packet,
     (parameter, current) => createDerivedRecord(record.satelliteId, record.timestamp, current, parameter),
   )
   for (const derived of readyToDerived) {
-    createTelemetryRecord(db, derived)
+    createTelemetryRecord(db, derived, { replaceOnConflict: true })
   }
+
+  telemetryCache.setPacket(record.satelliteId, record.timestamp, packet)
   telemetryCache.prune()
   return record
+}
+
+function deleteTelemetry (db: SqliteDatabase, id: string): void {
+  const record = getTelemetryRecordById(db, id)
+  deleteTelemetryRecordById(db, id)
+  telemetryCache.remove(record.satelliteId, record.timestamp, record.measurement.name)
 }
 
 function ingestBulkTelemetry(db: SqliteDatabase, data: {satelliteId: string, timestamp: string, data: Record<string, number | string>}) {
@@ -232,4 +280,4 @@ function clearTelemetryCache () {
   telemetryCache.clear()
 }
 
-export { ingestBulkTelemetry, ingestTelemetry, clearTelemetryCache, computeString };
+export { ingestBulkTelemetry, ingestTelemetry, deleteTelemetry, clearTelemetryCache, computeString };

@@ -158,6 +158,24 @@ test('bad filters return 400', async (t) => {
   res = await app.inject({
     url: '/telemetry',
     query: {
+      orderBy: "(CASE WHEN satellite_id = 'PHOTON-01' THEN 0 ELSE 1 END)",
+    }
+  })
+
+  assert.equal(res.statusCode, 400, "orderBy expressions should return 400")
+
+  res = await app.inject({
+    url: '/telemetry',
+    query: {
+      filterBy: [JSON.stringify({ name: '1 OR satellite_id', value: 'x' })],
+    }
+  })
+
+  assert.equal(res.statusCode, 400, "filter expressions should return 400")
+
+  res = await app.inject({
+    url: '/telemetry',
+    query: {
       orderDirection: 'invalid'
     }
   })

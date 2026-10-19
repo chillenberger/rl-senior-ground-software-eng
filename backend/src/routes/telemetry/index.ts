@@ -3,9 +3,8 @@ import { z } from 'zod'
 import { 
   getTelemetryRecords, 
   getTelemetryRecordById,
-  deleteTelemetryRecordById,
 } from '../../db/queries'
-import { ingestTelemetry } from '../../telemetry'
+import { deleteTelemetry, ingestTelemetry } from '../../telemetry'
 import { InvalidColumnError, TelemetryRecordNotFoundError, TelemetryConflictError, UnknownSatelliteError, TelemetryCheckFailedError, TelemetryParameterNotFoundError } from '../../db/errors'
 import { CreateTelemetryRecordRequestSchema, GetTelemetryRecordsOptionsSchema, MeasurementSchema, GetTelemetryRecordsOptions } from '../../db/types'
 
@@ -107,7 +106,7 @@ const telemetry: FastifyPluginAsyncZod = async (fastify): Promise<void> => {
     },
   }, async function (request, reply) {
     try {
-      deleteTelemetryRecordById(fastify.db, request.params.telemetry_id)
+      deleteTelemetry(fastify.db, request.params.telemetry_id)
     } catch (error) {
       if (error instanceof TelemetryRecordNotFoundError) {
         throw fastify.httpErrors.notFound(error.message)

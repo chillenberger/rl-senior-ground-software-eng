@@ -38,6 +38,30 @@ export class TelemetryCache {
     return packet
   }
 
+  get (satelliteId: string, timestamp: string): Packet | undefined {
+    const packet = this.packets.get(satelliteId)?.get(timestamp)
+    if (packet === undefined) return undefined
+    return { ...packet }
+  }
+
+  setPacket (satelliteId: string, timestamp: string, packet: Packet): void {
+    let byTimestamp = this.packets.get(satelliteId)
+    if (byTimestamp === undefined) {
+      byTimestamp = new Map()
+      this.packets.set(satelliteId, byTimestamp)
+    }
+    byTimestamp.set(timestamp, { ...packet })
+  }
+
+  remove (satelliteId: string, timestamp: string, name: string): void {
+    const byTimestamp = this.packets.get(satelliteId)
+    const packet = byTimestamp?.get(timestamp)
+    if (byTimestamp === undefined || packet === undefined || !Object.hasOwn(packet, name)) return
+    delete packet[name]
+    if (Object.keys(packet).length === 0) byTimestamp.delete(timestamp)
+    if (byTimestamp.size === 0) this.packets.delete(satelliteId)
+  }
+
   /*
   Walk derived parameters.
   Potential O() explosion, could use graphs if derived parameters are numerous
@@ -83,5 +107,6 @@ export class TelemetryCache {
 
   clear () {
     this.packets.clear()
+    this.sizes.clear()
   }
 }

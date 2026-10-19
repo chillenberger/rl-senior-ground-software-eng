@@ -50,7 +50,6 @@ test('ingests telemetry', async (t) => {
       satelliteId: 'PHOTON-01',
       filterBy: [{ name: 'measurement.name', value: 'power' }],
     })
-    console.log(records)
     assert.strictEqual(records.length, 1)
     assert.strictEqual(records[0].measurement.name, 'power')
     assert.strictEqual(records[0].measurement.value, 20)

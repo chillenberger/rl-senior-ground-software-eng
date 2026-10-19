@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import * as assert from 'node:assert'
+import Database from 'better-sqlite3'
 import { 
   createTelemetryRecord,
   getTelemetryParameterByName,
@@ -388,4 +389,31 @@ test('listSatellites reports oos on the latest timestamp group', async (t) => {
       oos: true,
     },
   ])
+})
+
+test('one active telemetry parameter per satellite and name', async (t) => {
+  const db = createTempDatabase(t)
+  seedDatabase(db)
+  const insert = db.prepare(`
+    INSERT INTO telemetry_parameters (satellite_id, name, derived, definition)
+    VALUES ('PHOTON-01', 'voltage', 0, '{"units": "v"}')
+  `)
+
+  assert.throws(
+    () => insert.run(),
+    (error: unknown) => error instanceof Database.SqliteError && error.code === 'SQLITE_CONSTRAINT_UNIQUE',
+  )
+
+  db.prepare(`
+    UPDATE telemetry_parameters
+    SET deprecated_at = '2026-09-01T00:00:00.000Z'
+    WHERE satellite_id = 'PHOTON-01' AND name = 'voltage' AND deprecated_at IS NULL
+  `).run()
+
+  const created = insert.run()
+  assert.equal(created.changes, 1)
+  assert.throws(
+    () => insert.run(),
+    (error: unknown) => error instanceof Database.SqliteError && error.code === 'SQLITE_CONSTRAINT_UNIQUE',
+  )
 })

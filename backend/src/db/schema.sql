@@ -30,6 +30,12 @@ CREATE TABLE IF NOT EXISTS telemetry_parameters (
   CHECK (metadata IS NULL OR json_type(metadata) = 'object')
 );
 
+-- NULL deprecated_at values are distinct in the table UNIQUE, so that constraint
+-- does not limit active rows. One active parameter per satellite and name.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_telemetry_parameters_active
+  ON telemetry_parameters (satellite_id, name)
+  WHERE deprecated_at IS NULL;
+
 -- measurement is JSON so new fields can land without a migration.
 -- parameter_id records which parameter definition produced the reading.
 -- Table UNIQUE constraints cannot contain expressions, so the

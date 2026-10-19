@@ -27,11 +27,20 @@ function appendEquals (
   params.push(value)
 }
 
+const SORTABLE_COLUMNS = new Set(['id', 'satellite_id', 'timestamp'])
+const MEASUREMENT_KEYS = new Set(['name', 'value', 'units', 'oos'])
+
 function parseFieldName (value: string): string {
-  if (!value.includes('.')) return value
-  const [column, ...path] = value.split('.')
-  const extract = path.map(key => `->>'${key.replaceAll("'", "''")}'`).join('')
-  return `${column}${extract}`
+  if (!value.includes('.')) {
+    if (!SORTABLE_COLUMNS.has(value)) throw new InvalidColumnError(value)
+    return value
+  }
+
+  const [column, key, ...rest] = value.split('.')
+  if (column !== 'measurement' || rest.length > 0 || key === undefined || !MEASUREMENT_KEYS.has(key)) {
+    throw new InvalidColumnError(value)
+  }
+  return `measurement->>'${key}'`
 }
 
 function getTelemetryRecords (
@@ -145,15 +154,23 @@ function isSameTelemetryRecord (
 Create a telemetry record.
 If the record already exists with the same values, return the existing record.
 If the record is different, throw a conflict error.
+Derived recomputes pass replaceOnConflict so a changed equation result updates the stored row.
 */
 function createTelemetryRecord (
   db: SqliteDatabase,
   record: CreateTelemetryRecord,
+  options: { replaceOnConflict?: boolean } = {},
 ): TelemetryRecord {
   const parsed = CreateTelemetryRecordRequestSchema.parse(record)
   const parameter = getTelemetryParameterByName(db, parsed.satelliteId, parsed.name)
   if (parameter === undefined) throw new TelemetryParameterNotFoundError(parsed.name)
 
+  const measurement = JSON.stringify({
+    name: parsed.name,
+    value: parsed.value,
+    oos: parsed.oos ?? false,
+    ...(parsed.units === undefined ? {} : { units: parsed.units }),
+  })
   const insert = db.prepare(`
     INSERT INTO telemetry (
       satellite_id, parameter_id, timestamp, measurement
@@ -166,12 +183,7 @@ function createTelemetryRecord (
       parsed.satelliteId,
       parameter.id,
       parsed.timestamp,
-      JSON.stringify({
-        name: parsed.name,
-        value: parsed.value,
-        oos: parsed.oos ?? false,
-        ...(parsed.units === undefined ? {} : { units: parsed.units }),
-      }),
+      measurement,
     )
     return TelemetryRecordSchema.parse(row)
   } catch (error) {
@@ -187,8 +199,15 @@ function createTelemetryRecord (
     const stored = TelemetryRecordSchema.safeParse(existing)
     if (!stored.success) throw error
     if (isSameTelemetryRecord(stored.data, parsed)) return stored.data
+    if (!options.replaceOnConflict) throw new TelemetryConflictError(parsed.name)
 
-    throw new TelemetryConflictError(parsed.name)
+    const row = db.prepare(`
+      UPDATE telemetry
+      SET parameter_id = ?, measurement = ?
+      WHERE id = ?
+      RETURNING *
+    `).get(parameter.id, measurement, stored.data.id)
+    return TelemetryRecordSchema.parse(row)
   }
 }
 
