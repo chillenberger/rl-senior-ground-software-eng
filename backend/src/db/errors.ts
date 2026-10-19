@@ -35,7 +35,7 @@ export class InvalidColumnError extends Error {
 }
 
 export class TelemetryCheckFailedError extends Error {
-  constructor (name: string, value: unknown) {
+  constructor (name: string, value: string | number) {
     super(`Check for ${name} failed: ${value}`)
     this.name = 'TelemetryCheckFailedError'
   }

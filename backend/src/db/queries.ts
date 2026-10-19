@@ -87,7 +87,7 @@ function getTelemetryRecords (
       throw new InvalidColumnError(error.message.slice('no such column: '.length))
     }
     if (error instanceof Database.SqliteError) {
-      throw new Error(`Database error: ${error.message}`)
+      throw new Error(`Database error: ${error.message}`, { cause: error })
     }
     throw error
   }

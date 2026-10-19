@@ -27,7 +27,7 @@ type DerivedParameter = {
 
 function computeString(equation: string, data: Record<string, number | string>): {ok: true, value: unknown} | {ok: false, error: string} {
   try {
-    const solution = parser.parse(equation).evaluate(data);
+    const solution = parser.parse(equation).evaluate(data) as unknown;
     return { ok: true, value: solution };
   } catch (error) {
     return { ok: false, error: (error as Error).message };
@@ -137,7 +137,7 @@ function createDerivedRecord (
 
   let evaluated: unknown
   try {
-    evaluated = parameter.expression.evaluate(inputs)
+    evaluated = parameter.expression.evaluate(inputs) as unknown
   } catch (error) {
     console.error(error)
     return

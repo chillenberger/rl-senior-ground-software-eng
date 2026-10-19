@@ -58,11 +58,16 @@ const TelemetryFilterSchema = z.object({
   value: z.string(),
 })
 
+// Array.isArray narrows to any[], which then leaks out of the return.
+function isUnknownArray (value: unknown): value is unknown[] {
+  return Array.isArray(value)
+}
+
 // Query strings deliver one filter as a JSON string and repeated filters as an array of JSON strings.
 // Direct callers pass the parsed objects.
 function parseFilterQuery (value: unknown): unknown {
   if (value === undefined) return undefined
-  const items = Array.isArray(value) ? value : [value]
+  const items = isUnknownArray(value) ? value : [value]
   return items.map((item) => {
     if (typeof item !== 'string') return item
     try {

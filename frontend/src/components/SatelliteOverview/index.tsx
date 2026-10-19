@@ -2,7 +2,7 @@ import type { SatelliteSummary } from '../../api'
 import './styles.css'
 
 function countByStatus(satellites: SatelliteSummary[]): Array<string> {
-  let satelliteIds = []
+  const satelliteIds = []
   for (const satellite of satellites) {
     if (satellite.oos === true) satelliteIds.push(satellite.id)
   }
