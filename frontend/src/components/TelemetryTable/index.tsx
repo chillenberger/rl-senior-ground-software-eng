@@ -1,9 +1,18 @@
-import { HEALTH_STATUSES, type HealthStatus, type SatelliteSummary, type TelemetryRecord, type TelemetrySortColumn, type TelemetrySortDirection } from '../../api'
+import type { 
+  SatelliteSummary, 
+  TelemetryRecord, 
+  TelemetrySortColumn, 
+  TelemetrySortDirection,
+} from '../../api'
 import { Spinner } from '../Spinner/index'
 import './styles.css'
 
+interface MeasurementRecord extends TelemetryRecord {
+  name: string
+}
+
 type Column = {
-  key: keyof TelemetryRecord
+  key: keyof MeasurementRecord
   label: string
   unit?: string
   sortable: boolean
@@ -13,9 +22,8 @@ type Column = {
 const COLUMNS: Column[] = [
   { key: 'satelliteId', label: 'Satellite', sortable: false, align: 'start' },
   { key: 'timestamp', label: 'Timestamp', unit: 'UTC', sortable: true, align: 'start' },
-  { key: 'altitude', label: 'Altitude', unit: 'm', sortable: true, align: 'end' },
-  { key: 'velocity', label: 'Velocity', unit: 'km/s', sortable: true, align: 'end' },
-  { key: 'status', label: 'Status', sortable: false, align: 'start' },
+  { key: 'name', label: 'Measurement', sortable: false, align: 'start' },
+  { key: 'measurement', label: 'Value', sortable: false, align: 'start' },
 ]
 
 const timestampFormat = new Intl.DateTimeFormat('en-GB', {
@@ -29,11 +37,6 @@ const timestampFormat = new Intl.DateTimeFormat('en-GB', {
   hourCycle: 'h23',
 })
 
-const altitudeFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 1 })
-const velocityFormat = new Intl.NumberFormat('en-US', {
-  minimumFractionDigits: 2,
-  maximumFractionDigits: 2,
-})
 
 function formatTimestamp(iso: string): string {
   const date = new Date(iso)
@@ -41,20 +44,14 @@ function formatTimestamp(iso: string): string {
   return timestampFormat.format(date)
 }
 
-function formatStatus(status: HealthStatus): string {
-  return status.charAt(0).toUpperCase() + status.slice(1)
-}
-
-function formatCell(record: TelemetryRecord, key: keyof TelemetryRecord): string {
+function formatCell(record: TelemetryRecord, key: keyof MeasurementRecord): string {
   switch (key) {
     case 'timestamp':
       return formatTimestamp(record.timestamp)
-    case 'altitude':
-      return altitudeFormat.format(record.altitude)
-    case 'velocity':
-      return velocityFormat.format(record.velocity)
-    case 'status':
-      return formatStatus(record.status)
+    case 'measurement':
+      return `${record.measurement.value} ${record.measurement.units ?? ''}`
+    case 'name':
+      return record.measurement.name
     default:
       return record[key]
   }
@@ -66,8 +63,6 @@ type TelemetryTableProps = {
   satellites: SatelliteSummary[]
   satelliteId: string
   onSatelliteChange: (satelliteId: string) => void
-  status: HealthStatus | ''
-  onStatusChange: (status: HealthStatus | '') => void
   sortColumn: TelemetrySortColumn
   sortDirection: TelemetrySortDirection
   onSort: (column: TelemetrySortColumn) => void
@@ -85,8 +80,6 @@ export function TelemetryTable({
   satellites,
   satelliteId,
   onSatelliteChange,
-  status,
-  onStatusChange,
   sortColumn,
   sortDirection,
   onSort,
@@ -130,8 +123,6 @@ export function TelemetryTable({
                         satelliteId={satelliteId}
                         onSatelliteChange={onSatelliteChange}
                       />
-                    ) : column.key === 'status' ? (
-                      <StatusFilter status={status} onStatusChange={onStatusChange} />
                     ) : column.sortable ? (
                       <SortColumnButton
                         column={column}
@@ -168,7 +159,7 @@ export function TelemetryTable({
               </tr>
             ) : (
               records.map((record) => (
-                <tr key={record.id} data-status={record.status === 'healthy' ? undefined : record.status}>
+                <tr key={record.id} data-status={record.measurement.oos ? 'oos' : undefined}>
                   {COLUMNS.map((column) => (
                     <td
                       key={column.key}
@@ -245,39 +236,6 @@ function SatelliteFilter({
         {satellites.map((satellite) => (
           <option key={satellite.id} value={satellite.id}>
             {satellite.id}
-          </option>
-        ))}
-      </select>
-    </label>
-  )
-}
-
-function isStatusFilter(value: string): value is HealthStatus | '' {
-  return value === '' || HEALTH_STATUSES.some((status) => status === value)
-}
-
-function StatusFilter({
-  status,
-  onStatusChange,
-}: {
-  status: HealthStatus | ''
-  onStatusChange: (status: HealthStatus | '') => void
-}) {
-  return (
-    <label className="telemetry-table__filter" htmlFor="status-filter">
-      <span>Status</span>
-      <select
-        id="status-filter"
-        value={status}
-        onChange={(event) => {
-          const value = event.target.value
-          if (isStatusFilter(value)) onStatusChange(value)
-        }}
-      >
-        <option value="">All</option>
-        {HEALTH_STATUSES.map((value) => (
-          <option key={value} value={value}>
-            {formatStatus(value)}
           </option>
         ))}
       </select>

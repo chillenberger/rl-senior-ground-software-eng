@@ -1,16 +1,16 @@
 import { test } from 'node:test'
 import * as assert from 'node:assert'
+import { z } from 'zod'
 import { build, seedDatabase, testReadings } from '../../helper'
+import { MeasurementSchema } from '../../../src/db/queries'
 
-const requiredFields = ['id', 'timestamp', 'satelliteId', 'status', 'altitude', 'velocity']
+const requiredFields = ['id', 'timestamp', 'satelliteId']
 
 type TelemetryBody = {
   id: string
   timestamp: string
   satelliteId: string
-  status: string
-  altitude: number
-  velocity: number
+  measurement: z.infer<typeof MeasurementSchema>
 }
 
 type TelemetryPage = {
@@ -21,23 +21,24 @@ type TelemetryPage = {
 test('get telemetry records with filters', async (t) => {
   const app = await build(t)
   seedDatabase(app.db)
-  const healthyPhoton = testReadings[0]
+  const healthyPhoton = testReadings[2]
 
   const res = await app.inject({
     url: '/telemetry',
     query: {
       satelliteId: healthyPhoton.satellite_id,
-      status: healthyPhoton.health_status,
+      filterBy: [JSON.stringify({ name: 'measurement.name', value: 'health_status' })],
     }
   })
 
   assert.equal(res.statusCode, 200)
   const body = res.json<TelemetryPage>()
+
   assert.equal(body.hasMore, false)
   const records = body.records
   assert.equal(records.length, 1)
   assert.equal(records[0].satelliteId, healthyPhoton.satellite_id)
-  assert.equal(records[0].status, healthyPhoton.health_status)
+  assert.equal(records[0].measurement.value, healthyPhoton.measurement.value)
   assert.equal(records[0].timestamp, healthyPhoton.timestamp)
 
   const resFields = Object.keys(records[0])
@@ -66,33 +67,33 @@ test('limit reports whether another page exists', async (t) => {
 
   const firstPage = await app.inject({
     url: '/telemetry',
-    query: { limit: '2' },
+    query: { limit: '2', orderBy: 'id', orderDirection: 'asc' },
   })
 
   assert.equal(firstPage.statusCode, 200)
   const first = firstPage.json<TelemetryPage>()
   assert.equal(first.hasMore, true)
-  assert.deepEqual(first.records.map(record => record.id), ['2', '4'])
+  assert.deepEqual(first.records.map(record => record.id), ['1', '2'])
 
   const lastPage = await app.inject({
     url: '/telemetry',
-    query: { limit: '2', offset: '2' },
+    query: { limit: '3', offset: '2', orderBy: 'id', orderDirection: 'asc' },
   })
 
   assert.equal(lastPage.statusCode, 200)
   const last = lastPage.json<TelemetryPage>()
   assert.equal(last.hasMore, false)
-  assert.deepEqual(last.records.map(record => record.id), ['3', '1'])
+  assert.deepEqual(last.records.map(record => record.id), ['3', '4', '5'])
 
   const exactPage = await app.inject({
     url: '/telemetry',
-    query: { limit: '4' },
+    query: { limit: '5' },
   })
 
   assert.equal(exactPage.statusCode, 200)
   const exact = exactPage.json<TelemetryPage>()
   assert.equal(exact.hasMore, false)
-  assert.equal(exact.records.length, 4)
+  assert.equal(exact.records.length, 5)
 })
 
 test('bad filters return 400', async (t) => {
@@ -138,6 +139,15 @@ test('bad filters return 400', async (t) => {
   res = await app.inject({
     url: '/telemetry',
     query: {
+      filterBy: [JSON.stringify({ name: 'not_a_column', value: 'x' })],
+    }
+  })
+
+  assert.equal(res.statusCode, 400, "Invalid filter column should return 400")
+
+  res = await app.inject({
+    url: '/telemetry',
+    query: {
       orderBy: 'health_status'
     }
   })
@@ -152,67 +162,6 @@ test('bad filters return 400', async (t) => {
   })
 
   assert.equal(res.statusCode, 400, "Invalid orderDirection should return 400")
-
-  res = await app.inject({
-    url: '/telemetry',
-    query: {
-      status: 'invalid'
-    }
-  })
-
-  assert.equal(res.statusCode, 400, "Invalid status should return 400")
-})
-
-test('orderBy altitude and velocity', async (t) => {
-  const app = await build(t)
-  seedDatabase(app.db)
-
-  const byAltitude = await app.inject({
-    url: '/telemetry',
-    query: {
-      orderBy: 'altitude',
-      orderDirection: 'asc',
-    },
-  })
-
-  assert.equal(byAltitude.statusCode, 200)
-  assert.deepEqual(
-    byAltitude.json<TelemetryPage>().records.map(record => record.altitude),
-    [450000, 500000, 510000, 700000],
-  )
-
-  const byVelocity = await app.inject({
-    url: '/telemetry',
-    query: {
-      orderBy: 'velocity',
-      orderDirection: 'desc',
-    },
-  })
-
-  assert.equal(byVelocity.statusCode, 200)
-  assert.deepEqual(
-    byVelocity.json<TelemetryPage>().records.map(record => record.velocity),
-    [8, 7.5, 7, 6.5],
-  )
-})
-
-test('orderBy status uses the public name', async (t) => {
-  const app = await build(t)
-  seedDatabase(app.db)
-
-  const res = await app.inject({
-    url: '/telemetry',
-    query: {
-      orderBy: 'status',
-      orderDirection: 'asc',
-    }
-  })
-
-  assert.equal(res.statusCode, 200)
-  assert.deepEqual(
-    res.json<TelemetryPage>().records.map(record => record.status),
-    ['anomaly', 'critical', 'healthy', 'healthy'],
-  )
 })
 
 test('telemetry record by id', async (t) => {
@@ -236,10 +185,11 @@ test('telemetry record by id', async (t) => {
 test('telemetry record by id not found', async (t) => {
   const app = await build(t)
   seedDatabase(app.db)
+  const id = testReadings.length + 1
   const res = await app.inject({
-    url: '/telemetry/5'
+    url: `/telemetry/${id}`
   })
   assert.equal(res.statusCode, 404)
   const body = res.json<{ message: string }>()
-  assert.equal(body.message, 'Telemetry record 5 not found')
+  assert.equal(body.message, `Telemetry record ${id} not found`)
 })

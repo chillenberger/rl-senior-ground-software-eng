@@ -1,19 +1,12 @@
-import type { HealthStatus, SatelliteSummary } from '../../api'
+import type { SatelliteSummary } from '../../api'
 import './styles.css'
 
-const STATUSES: { status: HealthStatus; label: string }[] = [
-  { status: 'healthy', label: 'Healthy' },
-  { status: 'anomaly', label: 'Anomaly' },
-  { status: 'critical', label: 'Critical' },
-]
-
-function countByStatus(satellites: SatelliteSummary[]): Record<HealthStatus, number> {
-  const counts: Record<HealthStatus, number> = { healthy: 0, anomaly: 0, critical: 0 }
+function countByStatus(satellites: SatelliteSummary[]): Array<string> {
+  let satelliteIds = []
   for (const satellite of satellites) {
-    const status = satellite.latestReading?.status
-    if (status) counts[status] += 1
+    if (satellite.oos === true) satelliteIds.push(satellite.id)
   }
-  return counts
+  return satelliteIds
 }
 
 export function SatelliteOverview({ satellites }: { satellites: SatelliteSummary[] }) {
@@ -21,12 +14,11 @@ export function SatelliteOverview({ satellites }: { satellites: SatelliteSummary
 
   return (
     <section className="satellite-overview" aria-labelledby="satellite-overview-heading">
-      <h2 id="satellite-overview-heading">Satellite Statuses</h2>
+      <h2 id="satellite-overview-heading">Satellite OOS</h2>
       <ul className="satellite-overview__list">
-        {STATUSES.map(({ status, label }) => (
-          <li key={status} className="satellite-overview__item" data-status={status}>
-            <span className="satellite-overview__value">{counts[status]}</span>
-            <span className="satellite-overview__label">{label}</span>
+        {counts.map((satelliteId) => (
+          <li className="satellite-overview__item" data-status="oos" key={satelliteId}>
+            <span className="satellite-overview__value">{satelliteId}</span>
           </li>
         ))}
       </ul>

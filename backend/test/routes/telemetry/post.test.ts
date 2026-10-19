@@ -1,14 +1,14 @@
 import { test } from 'node:test'
 import * as assert from 'node:assert'
 import { build, seedDatabase, testSatellites } from '../../helper'
+import { z } from 'zod'
+import { MeasurementSchema } from '../../../src/db/queries'
 
 type TelemetryBody = {
   id: string
   timestamp: string
   satelliteId: string
-  status: string
-  altitude: number
-  velocity: number
+  measurement: z.infer<typeof MeasurementSchema>
 }
 
 test('post telemetry record', async (t) => {
@@ -17,9 +17,8 @@ test('post telemetry record', async (t) => {
   const healthyPhoton = {
     timestamp: '2026-09-26T12:00:00Z',
     satelliteId: testSatellites[0].id,
-    status: 'healthy',
-    altitude: 100,
-    velocity: 10,
+    value: 100,
+    name: 'altitude'
   }
 
   const res = await app.inject({
@@ -32,9 +31,8 @@ test('post telemetry record', async (t) => {
   const body = res.json<TelemetryBody>()
   assert.equal(body.timestamp, '2026-09-26T12:00:00.000Z')
   assert.equal(body.satelliteId, healthyPhoton.satelliteId)
-  assert.equal(body.status, healthyPhoton.status)
-  assert.equal(body.altitude, healthyPhoton.altitude)
-  assert.equal(body.velocity, healthyPhoton.velocity)
+  assert.equal(body.measurement.value, healthyPhoton.value)
+  assert.equal(body.measurement.oos, false)
   assert.equal(typeof body.id, 'string')
 })
 
@@ -58,36 +56,67 @@ test('post telemetry record with invalid iso datetime', async (t) => {
   const res = await app.inject({
     url: '/telemetry',
     method: 'POST',
-    body: { timestamp: 'invalid', satelliteId: '1', status: 'healthy', altitude: 100, velocity: 10 },
+    body: { 
+      timestamp: 'invalid', 
+      satelliteId: '1', 
+      value: 100, 
+      name: 'altitude'
+    },
   })
 
   assert.equal(res.statusCode, 400)
 })
 
-test('post telemetry record with invalid altitude', async (t) => {
+test('post telemetry record rejects an unknown parameter', async (t) => {
   const app = await build(t)
   seedDatabase(app.db)
 
   const res = await app.inject({
     url: '/telemetry',
     method: 'POST',
-    body: { timestamp: '2026-09-26T12:00:00Z', satelliteId: '1', status: 'healthy', altitude: -1, velocity: 10 },
+    body: {
+      timestamp: '2026-09-26T12:00:00Z',
+      satelliteId: testSatellites[0].id,
+      value: 'healthy',
+      name: 'invalid',
+    },
   })
-
-  assert.equal(res.statusCode, 400)
+  assert.equal(res.statusCode, 404)
 })
 
-test('post telemetry record with invalid velocity', async (t) => {
+test('post telemetry record rejects an altitude that fails its check', async (t) => {
   const app = await build(t)
   seedDatabase(app.db)
 
   const res = await app.inject({
     url: '/telemetry',
     method: 'POST',
-    body: { timestamp: '2026-09-26T12:00:00Z', satelliteId: '1', status: 'healthy', altitude: 100, velocity: -1 },
+    body: { 
+      timestamp: '2026-09-26T12:00:00Z', 
+      satelliteId: testSatellites[0].id, 
+      value: -1, 
+      name: 'altitude'
+    },
   })
-
   assert.equal(res.statusCode, 400)
+})
+
+test('post telemetry record stores an out of spec altitude', async (t) => {
+  const app = await build(t)
+  seedDatabase(app.db)
+
+  const res = await app.inject({
+    url: '/telemetry',
+    method: 'POST',
+    body: { 
+      timestamp: '2026-09-26T12:00:00Z', 
+      satelliteId: testSatellites[0].id, 
+      value: 0, 
+      name: 'altitude'
+    },
+  })
+  assert.equal(res.statusCode, 200)
+  assert.equal(res.json<TelemetryBody>().measurement.oos, true)
 })
 
 test('post telemetry record is idempotent for the same satellite and timestamp', async (t) => {
@@ -95,9 +124,8 @@ test('post telemetry record is idempotent for the same satellite and timestamp',
   seedDatabase(app.db)
   const reading = {
     satelliteId: testSatellites[0].id,
-    status: 'healthy',
-    altitude: 100,
-    velocity: 10,
+    value: 100,
+    name: 'altitude'
   }
 
   const first = await app.inject({
@@ -120,15 +148,53 @@ test('post telemetry record is idempotent for the same satellite and timestamp',
   assert.equal(replayBody.id, firstBody.id)
 })
 
+test('post telemetry record accepts another channel at the same instant', async (t) => {
+  const app = await build(t)
+  seedDatabase(app.db)
+  const timestamp = '2026-09-26T12:00:00Z'
+  const satelliteId = testSatellites[0].id
+
+  const altitude = await app.inject({
+    url: '/telemetry',
+    method: 'POST',
+    body: { timestamp, satelliteId, name: 'altitude', value: 100 },
+  })
+  const health = await app.inject({
+    url: '/telemetry',
+    method: 'POST',
+    body: { timestamp, satelliteId, name: 'health_status', value: 'healthy' },
+  })
+  const replay = await app.inject({
+    url: '/telemetry',
+    method: 'POST',
+    body: { timestamp: '2026-09-26T12:00:00.000Z', satelliteId, name: 'health_status', value: 'healthy' },
+  })
+  const conflict = await app.inject({
+    url: '/telemetry',
+    method: 'POST',
+    body: { timestamp, satelliteId, name: 'health_status', value: 'anomaly' },
+  })
+
+  assert.equal(altitude.statusCode, 200)
+  assert.equal(health.statusCode, 200)
+  assert.equal(replay.statusCode, 200)
+  assert.equal(conflict.statusCode, 409)
+  const healthBody = health.json<TelemetryBody>()
+  const replayBody = replay.json<TelemetryBody>()
+  assert.equal(replayBody.id, healthBody.id)
+  assert.notEqual(healthBody.id, altitude.json<TelemetryBody>().id)
+  assert.equal(replayBody.measurement.name, 'health_status')
+  assert.equal(replayBody.measurement.value, 'healthy')
+})
+
 test('post telemetry record conflicts when the same instant has different values', async (t) => {
   const app = await build(t)
   seedDatabase(app.db)
   const reading = {
     timestamp: '2026-09-26T12:00:00Z',
     satelliteId: testSatellites[0].id,
-    status: 'healthy',
-    altitude: 100,
-    velocity: 10,
+    value: 100,
+    name: 'altitude'
   }
 
   const first = await app.inject({
@@ -139,7 +205,10 @@ test('post telemetry record conflicts when the same instant has different values
   const conflict = await app.inject({
     url: '/telemetry',
     method: 'POST',
-    body: { ...reading, altitude: 200 },
+    body: {
+      ...reading,
+      value: 200,
+    },
   })
 
   assert.equal(first.statusCode, 200)

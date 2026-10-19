@@ -28,7 +28,7 @@ test('delete telemetry record', async (t) => {
 test('delete telemetry record not found', async (t) => {
   const app = await build(t)
   seedDatabase(app.db)
-  const deleteId = '5'
+  const deleteId = '999'
   const res = await app.inject({
     method: 'DELETE',
     url: `/telemetry/${deleteId}`,

@@ -5,29 +5,30 @@ I used axios to simplify the API calls and handle errors gracefully.
 */
 import axios from 'axios'
 
-export type HealthStatus = 'healthy' | 'anomaly' | 'critical'
-
-export const HEALTH_STATUSES: readonly HealthStatus[] = ['healthy', 'anomaly', 'critical']
-
-export type TelemetrySortColumn = 'satelliteId' | 'timestamp' | 'altitude' | 'velocity' | 'status'
+export type TelemetrySortColumn = 'satelliteId' | 'timestamp' 
 export type TelemetrySortDirection = 'asc' | 'desc'
+
+export type Measurement = {
+  value: number | string
+  name: string
+  units: string | null
+  oos?: boolean
+}
 
 export type TelemetryRecord = {
   id: string
   satelliteId: string
   timestamp: string
-  altitude: number
-  velocity: number
-  status: HealthStatus
+  measurement: Measurement
 }
 
 export type TelemetryQuery = {
   satelliteId?: string
-  status?: HealthStatus
   orderBy: TelemetrySortColumn
   orderDirection: TelemetrySortDirection
   limit: number
   offset: number
+  filterBy: Record<string, string>
 }
 
 const client = axios.create({
@@ -45,11 +46,11 @@ export async function getTelemetry(query: TelemetryQuery, signal?: AbortSignal):
     signal,
     params: {
       orderBy: query.orderBy,
+      filterBy: query.filterBy,
       orderDirection: query.orderDirection,
       limit: query.limit,
       offset: query.offset,
       ...(query.satelliteId ? { satelliteId: query.satelliteId } : {}),
-      ...(query.status ? { status: query.status } : {}),
     },
   })
   return response.data
@@ -58,9 +59,8 @@ export async function getTelemetry(query: TelemetryQuery, signal?: AbortSignal):
 export type CreateTelemetryInput = {
   satelliteId: string
   timestamp: string
-  altitude: number
-  velocity: number
-  status: HealthStatus
+  name: string
+  value: number | string
 }
 
 export async function createTelemetry(telemetry: CreateTelemetryInput): Promise<TelemetryRecord> {
@@ -72,20 +72,12 @@ export async function deleteTelemetry(id: string): Promise<void> {
   await client.delete(`/telemetry/${encodeURIComponent(id)}`)
 }
 
-export type LatestReading = {
-  id: string
-  timestamp: string
-  altitude: number
-  velocity: number
-  status: HealthStatus
-}
-
 export type SatelliteSummary = {
   id: string
   operator: string
   createdAt: string
-  updatedAt: string
-  latestReading: LatestReading | null
+  updatedAt: string | null
+  oos: boolean | null
 }
 
 export async function getSatellites(signal?: AbortSignal): Promise<SatelliteSummary[]> {

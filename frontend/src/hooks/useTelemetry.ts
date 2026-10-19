@@ -10,7 +10,6 @@ import {
   deleteTelemetry,
   createTelemetry,
   type CreateTelemetryInput,
-  type HealthStatus,
   type TelemetryRecord,
   type TelemetrySortColumn,
   type TelemetrySortDirection,
@@ -23,7 +22,7 @@ const PAGE_SIZE = 10
 export function useTelemetry() {
   const [records, setRecords] = useState<TelemetryRecord[]>([])
   const [satelliteId, setSatelliteId] = useState('')
-  const [status, setStatus] = useState<HealthStatus | ''>('')
+  // const [status, setStatus] = useState<HealthStatus | ''>('')
   const [sortColumn, setSortColumn] = useState<TelemetrySortColumn>('timestamp')
   const [sortDirection, setSortDirection] = useState<TelemetrySortDirection>('desc')
   const [loading, setLoading] = useState(true)
@@ -54,11 +53,12 @@ export function useTelemetry() {
       try {
         const page = await getTelemetry({
           satelliteId: satelliteId || undefined,
-          status: status || undefined,
+          // status: status || undefined,
           orderBy: sortColumn,
           orderDirection: sortDirection,
           limit: PAGE_SIZE,
           offset: 0,
+          filterBy: {},
         }, controller.signal)
         if (requestId.current !== request) return
         setRecords(page.records)
@@ -94,11 +94,12 @@ export function useTelemetry() {
     try {
       const page = await getTelemetry({
         satelliteId: satelliteId || undefined,
-        status: status || undefined,
+        // status: status || undefined,
         orderBy: sortColumn,
         orderDirection: sortDirection,
         limit: PAGE_SIZE,
         offset,
+        filterBy: {},
       })
       if (requestId.current !== request) return
       setRecords((current) => [...current, ...page.records])
@@ -150,8 +151,8 @@ export function useTelemetry() {
     records,
     satelliteId,
     setSatelliteId,
-    status,
-    setStatus,
+    // status,
+    // setStatus,
     sortColumn,
     sortDirection,
     setSort,

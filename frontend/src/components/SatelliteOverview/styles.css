@@ -31,7 +31,8 @@
   border-left-color: #c49212;
 }
 
-.satellite-overview__item[data-status='critical'] {
+.satellite-overview__item[data-status='critical'],
+.satellite-overview__item[data-status='oos'] {
   border-left-color: #d64545;
 }
 

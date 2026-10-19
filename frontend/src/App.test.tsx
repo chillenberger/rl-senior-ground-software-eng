@@ -17,9 +17,12 @@ const reading: TelemetryRecord = {
   id: 'reading-1',
   satelliteId: 'SAT-1',
   timestamp: '2026-10-07T18:00:00.000Z',
-  altitude: 500_000,
-  velocity: 7.66,
-  status: 'healthy',
+  measurement: {
+    name: 'altitude',
+    value: 500_000,
+    units: 'm',
+    oos: false,
+  },
 }
 
 beforeEach(() => {

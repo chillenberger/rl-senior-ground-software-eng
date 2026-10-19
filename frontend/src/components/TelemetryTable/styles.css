@@ -165,6 +165,19 @@
   outline-offset: 2px;
 }
 
+.telemetry-table__table tr[data-status='oos'] td {
+  border-top-color: #d64545;
+  border-bottom-color: #d64545;
+}
+
+.telemetry-table__table tr[data-status='oos'] td:first-child {
+  border-left: 1px solid #d64545;
+}
+
+.telemetry-table__table tr[data-status='oos'] td:last-child {
+  border-right: 1px solid #d64545;
+}
+
 .telemetry-table__table tr[data-status='critical'] td {
   border-top-color: #d64545;
   border-bottom-color: #d64545;

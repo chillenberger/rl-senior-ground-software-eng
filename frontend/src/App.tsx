@@ -23,8 +23,8 @@ function App() {
     records,
     satelliteId,
     setSatelliteId,
-    status,
-    setStatus,
+    // status,
+    // setStatus,
     sortColumn,
     sortDirection,
     setSort,
@@ -61,8 +61,8 @@ function App() {
           satellites={satellites}
           satelliteId={satelliteId}
           onSatelliteChange={setSatelliteId}
-          status={status}
-          onStatusChange={setStatus}
+          // status={status}
+          // onStatusChange={setStatus}
           sortColumn={sortColumn}
           sortDirection={sortDirection}
           onSort={setSort}
