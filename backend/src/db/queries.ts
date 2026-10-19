@@ -1,97 +1,20 @@
-import { z } from 'zod'
 import Database from 'better-sqlite3'
 import { SqliteDatabase } from './database'
-import { InvalidColumnError, TelemetryRecordNotFoundError, UnknownSatelliteError, TelemetryConflictError } from './errors'
-
-export const OrderDirectionSchema = z.enum(['asc', 'desc'])
-
-export const NumericMeasurementSchema = z.object({
-  value: z.number(),
-  name: z.string(),
-  units: z.string(),
-  oos: z.boolean().optional(),
-})
-
-export const TextMeasurementSchema = z.object({
-  value: z.string(),
-  name: z.string(),
-  oos: z.boolean().optional(),
-})
-
-export const MeasurementSchema = NumericMeasurementSchema.or(TextMeasurementSchema)
-
-// SQLite returns the JSON measurement column as text.
-function parseStoredMeasurement (value: unknown): unknown {
-  if (typeof value !== 'string') return value
-  try {
-    return JSON.parse(value) as unknown
-  } catch {
-    return value
-  }
-}
-
-/*
-SQLite schema for the telemetry table.
-SQLite is case insensitive, so we use the snake_case column names.
-*/
-export const TelemetryRecordDBSchema = z.object({
-  id: z.number(),
-  satellite_id: z.string(),
-  timestamp: z.string(),
-  measurement: z.preprocess(parseStoredMeasurement, MeasurementSchema),
-  created_at: z.string(),
-})
-
-/* 
-Efficient snake_case to camelCase transformation.  
-*/
-export const TelemetryRecordSchema = TelemetryRecordDBSchema.transform((record) => ({
-  id: record.id.toString(),
-  satelliteId: record.satellite_id,
-  timestamp: record.timestamp,
-  measurement: record.measurement,
-  createdAt: record.created_at,
-}))
-export type TelemetryRecord = z.infer<typeof TelemetryRecordSchema>
-
-const TelemetryFilterSchema = z.object({
-  name: z.string(),
-  value: z.string(),
-})
-
-// Query strings deliver one filter as a JSON string and repeated filters as an array of JSON strings.
-// Direct callers pass the parsed objects.
-function parseFilterQuery (value: unknown): unknown {
-  if (value === undefined) return undefined
-  const items = Array.isArray(value) ? value : [value]
-  return items.map((item) => {
-    if (typeof item !== 'string') return item
-    try {
-      return JSON.parse(item) as unknown
-    } catch {
-      return item
-    }
-  })
-}
-
-export const GetTelemetryRecordsOptionsSchema = z.object({
-  id: z.string().optional(),
-  limit: z.coerce.number().int().nonnegative().optional(),
-  offset: z.coerce.number().int().nonnegative().optional(),
-  orderBy: z.string().optional(),
-  orderDirection: OrderDirectionSchema.optional(),
-  satelliteId: z.string().optional(),
-  filterBy: z.preprocess(parseFilterQuery, z.array(TelemetryFilterSchema).optional()),
-})
-
-function parseFieldName (value: string): string {
-  if (!value.includes('.')) return value
-  const [column, ...path] = value.split('.')
-  const extract = path.map(key => `->>'${key.replaceAll("'", "''")}'`).join('')
-  return `${column}${extract}`
-}
-
-export type GetTelemetryRecordsOptions = z.output<typeof GetTelemetryRecordsOptionsSchema>
+import { InvalidColumnError, TelemetryRecordNotFoundError, UnknownSatelliteError, TelemetryConflictError, TelemetryParameterNotFoundError } from './errors'
+import { 
+  TelemetryRecord, 
+  GetTelemetryRecordsOptions, 
+  GetTelemetryRecordsOptionsSchema,
+  TelemetryRecordDBSchema,
+  TelemetryRecordSchema,
+  SatelliteSummary,
+  SatelliteSummaryDBSchema,
+  SatelliteSummarySchema,
+  TelemetryParameter,
+  TelemetryParameterSchema,
+  CreateTelemetryRecord,
+  CreateTelemetryRecordRequestSchema,
+} from './types'
 
 function appendEquals (
   clauses: string[],
@@ -104,10 +27,17 @@ function appendEquals (
   params.push(value)
 }
 
-export function getTelemetryRecords (
+function parseFieldName (value: string): string {
+  if (!value.includes('.')) return value
+  const [column, ...path] = value.split('.')
+  const extract = path.map(key => `->>'${key.replaceAll("'", "''")}'`).join('')
+  return `${column}${extract}`
+}
+
+function getTelemetryRecords (
   db: SqliteDatabase,
   options: GetTelemetryRecordsOptions = {},
-): z.output<typeof TelemetryRecordSchema>[] {
+): TelemetryRecord[] {
   const parsed = GetTelemetryRecordsOptionsSchema.parse(options)
   const clauses: string[] = []
   const params: Array<string | number> = []
@@ -154,34 +84,12 @@ export function getTelemetryRecords (
   }
 }
 
-// SQLite returns EXISTS as 0 or 1, and NULL when the satellite has no telemetry.
-const NullableSqliteBooleanSchema = z.union([z.boolean(), z.number(), z.null()]).transform((value) => {
-  if (value === null) return null
-  return value === true || value === 1
-})
-
-const SatelliteSummaryDBSchema = z.object({
-  id: z.string(),
-  operator: z.string(),
-  updated_at: z.string().nullable(),
-  oos: NullableSqliteBooleanSchema,
-})
-
-export const SatelliteSummarySchema = z.object({
-  id: z.string(),
-  operator: z.string(),
-  updatedAt: z.string().nullable(),
-  oos: z.boolean().nullable(),
-})
-
-export type SatelliteSummary = z.infer<typeof SatelliteSummarySchema>
-
 /*
 Status is the latest timestamp group, not a named health reading.
 Operators do not all send health_status. A group is out of spec when any
 measurement in it has oos set.
 */
-export function listSatellites (db: SqliteDatabase): SatelliteSummary[] {
+function listSatellites (db: SqliteDatabase): SatelliteSummary[] {
   const rows = db.prepare(`
     SELECT
       satellites.id AS id,
@@ -216,27 +124,18 @@ export function listSatellites (db: SqliteDatabase): SatelliteSummary[] {
   }))
 }
 
-export function getTelemetryRecordById (
+function getTelemetryRecordById (
   db: SqliteDatabase,
   id: string,
-): z.output<typeof TelemetryRecordSchema> {
+): TelemetryRecord {
   const row = db.prepare('SELECT * FROM telemetry WHERE id = ?').get(id)
   if (!row) throw new TelemetryRecordNotFoundError(id)
   return TelemetryRecordSchema.parse(row)
 }
 
-export const CreateTelemetryRecordRequestSchema = z.object({
-  timestamp: z.iso.datetime({ offset: true}).transform((value) => new Date(value).toISOString()),
-  satelliteId: z.string(),
-  value: z.number().or(z.string()),
-  name: z.string(),
-  units: z.string().optional(),
-  oos: z.boolean().optional(),
-})
-
 function isSameTelemetryRecord (
-  stored: z.output<typeof TelemetryRecordSchema>,
-  record: z.input<typeof CreateTelemetryRecordRequestSchema>,
+  stored: TelemetryRecord,
+  record: CreateTelemetryRecord,
 ): boolean {
   return stored.measurement.name === record.name
     && stored.measurement.value === record.value
@@ -247,22 +146,25 @@ Create a telemetry record.
 If the record already exists with the same values, return the existing record.
 If the record is different, throw a conflict error.
 */
-export function createTelemetryRecord (
+function createTelemetryRecord (
   db: SqliteDatabase,
-  record: z.input<typeof CreateTelemetryRecordRequestSchema>,
-): z.output<typeof TelemetryRecordSchema> {
+  record: CreateTelemetryRecord,
+): TelemetryRecord {
   const parsed = CreateTelemetryRecordRequestSchema.parse(record)
+  const parameter = getTelemetryParameterByName(db, parsed.satelliteId, parsed.name)
+  if (parameter === undefined) throw new TelemetryParameterNotFoundError(parsed.name)
 
   const insert = db.prepare(`
     INSERT INTO telemetry (
-      satellite_id, timestamp, measurement
-    ) VALUES (?, ?, ?)
+      satellite_id, parameter_id, timestamp, measurement
+    ) VALUES (?, ?, ?, ?)
     RETURNING *
   `)
 
   try {
     const row = insert.get(
       parsed.satelliteId,
+      parameter.id,
       parsed.timestamp,
       JSON.stringify({
         name: parsed.name,
@@ -290,7 +192,7 @@ export function createTelemetryRecord (
   }
 }
 
-export function deleteTelemetryRecordById (
+function deleteTelemetryRecordById (
   db: SqliteDatabase,
   id: string,
 ): void {
@@ -298,36 +200,35 @@ export function deleteTelemetryRecordById (
   if (row.changes === 0) throw new TelemetryRecordNotFoundError(id)
 }
 
-// SQLite stores BOOLEAN columns as 0 or 1.
-const SqliteBooleanSchema = z.union([z.boolean(), z.number()]).transform(value => value === true || value === 1)
-
-export const TelemetryParameterSchema = z.object({
-  id: z.number(),
-  satellite_id: z.string(),
-  name: z.string(),
-  definition: z.string().nullable(),
-  created_at: z.string(),
-  derived: SqliteBooleanSchema,
-})
-
-export function getTelemetryParameters(db: SqliteDatabase, satelliteId: string): z.output<typeof TelemetryParameterSchema>[] {
+function getTelemetryParameters(db: SqliteDatabase, satelliteId: string): TelemetryParameter[] {
   const row = db.prepare(`
-    SELECT * FROM telemetry_parameters WHERE satellite_id = ? ORDER BY id
+    SELECT * FROM telemetry_parameters WHERE satellite_id = ? AND deprecated_at IS NULL ORDER BY id
   `).all(satelliteId)
   return TelemetryParameterSchema.array().parse(row)
 }
 
-export function getTelemetryParameterByName(db: SqliteDatabase, satelliteId: string, name: string): z.output<typeof TelemetryParameterSchema> | undefined {
+function getTelemetryParameterByName(db: SqliteDatabase, satelliteId: string, name: string): TelemetryParameter | undefined {
   const row = db.prepare(`
-    SELECT * FROM telemetry_parameters WHERE satellite_id = ? AND name = ?
+    SELECT * FROM telemetry_parameters WHERE satellite_id = ? AND name = ? AND deprecated_at IS NULL
   `).get(satelliteId, name)
   if (row === undefined) return undefined
   return TelemetryParameterSchema.parse(row)
 }
 
-export function getTelemetryParameterCount(db: SqliteDatabase, satelliteId: string): number {
+function getTelemetryParameterCount(db: SqliteDatabase, satelliteId: string): number {
   const stmt = db.prepare(`
-    SELECT COUNT(*) AS count FROM telemetry_parameters WHERE satellite_id = ?
+    SELECT COUNT(*) AS count FROM telemetry_parameters WHERE satellite_id = ? AND deprecated_at IS NULL
   `).get(satelliteId) as { count: number }
   return stmt.count
+}
+
+export {
+  getTelemetryRecords,
+  listSatellites,
+  getTelemetryRecordById,
+  createTelemetryRecord,
+  deleteTelemetryRecordById,
+  getTelemetryParameters,
+  getTelemetryParameterByName,
+  getTelemetryParameterCount,
 }

@@ -17,18 +17,19 @@ The frontend dashboard uses the backend, rather than a mock server, to display i
 
 Key features include: 
 - Heartbeat with a interval ping to inform user of api connection status
-- Satellite overview section showing most recent health status metrics
+- Satellite overview section showing satellites with Out-of-Spec readings 
   - This is only the most recent and therefore the current satellite state
   - This will updates on changes to telemetry rows from the dashboard 
   - It is color coded to draw attention to unhealthy metrics
 - Telemetry table
   - paginated
-  - sortable on timestamp, altitude, velocity
-  - filterable on satellite id and health status
+  - sortable on desired telemetry
+  - filterable on satellite id
+  - filterable telemetry to desired telemetry type
   - allows user to hard delete telemetry readings
   - allows user to add telemetry readings
     - client side checks on form
-  - color coded entries draw attention to unhealthy telemetry readings
+  - color coded entries draw attention to Out-of-Spec readings
 - Toast system to colocate all error messages.
 - Loading spinner
 - Tests
@@ -42,45 +43,36 @@ Features include:
   - get all telemetry, paginated, filtered, sorted
   - delete a telemetry entry by id
   - add a telemetry entry
+- Telemetry parameters gives list of telemetry types applicable to that satellite. 
 - In memory DB using SQLite.
+- Derived telemetry with derived check and derived specs. 
 - Tests
 
 ## Getting started
 
-You need **Node.js 22 or newer**. `better-sqlite3` compiles a native addon during install, so the machine also needs a C toolchain (on macOS, the Xcode command line tools).
-
 ### Start the Backend
-From `backend/` run the following commands
-
-```bash
-npm install
-npm run dev
-```
-
-This starts the API: [http://localhost:3000](http://localhost:3000)
+refer to `/backend/README.md` to get started.
 
 
 ### Start the Frontend
-From `frontend/` run the following commands
+refer to `/frontend/README.md` to get started.
 
 
-```bash
-npm install 
-npm run dev
-```
+## Derived Telemetry Notes 
+This application has been updated to handle general derived telemetry.  To do this I updated the telemetry table to hold measurements rather than a specified schema.  I also added a telemetry parameters table that contains all information about a telemetry measurement including 
+ - equation (if derived)
+ - units 
+ - deprecated_at (to handle equation revs)
+ - metadata (for any information the client desires to include like description, rev, ect...)
 
-- Dashboard: [http://localhost:5173](http://localhost:5173)
+This system collects data piecewise, meaning we can't guarantee if or when we will have enough information to calculate derived data.  To handle this while limiting database load I implement a cache system that maintains telemetry data by datetime and satellite id. Currently it is optimized for sub thousand parameter systems. For larger systems with lots of inter connections a graph solution is optimal. 
 
-Backend tests:
+Calculations are assumed to be fast and therefore not requiring a queue.  
 
-```bash
-npm test --prefix backend
-```
+We included the idea of checks and specs both are equations and decided by the client. 
+- checks define acceptable inputs. So, negative altitude fails a check if client desires.  
+- specs are acceptable ranges for a reading but don't violate a check, So, temp > 200 can be a valid check but out of spec.
 
-Frontend tests: 
-```bash
-npm test --prefix frontend
-```
+Telemetry parameters can be deprecated for updated telemetry parameters, the telemetry is always associated with the parameter that derived it. 
 
-Presentation Link: 
-https://docs.google.com/presentation/d/11x8-EHwto4lsK0NBcJFNXWMCpb8ct1Al/edit?usp=sharing&ouid=108177256411173522843&rtpof=true&sd=true
+The frontend was updated to filter on any telemetry type and can sort on telemetry type when filtered.

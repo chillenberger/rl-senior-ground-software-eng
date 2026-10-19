@@ -13,10 +13,13 @@ test('lists satellites with oos on their latest timestamp group', async (t) => {
   const app = await build(t)
   seedDatabase(app.db)
   app.db.prepare('INSERT INTO satellites (id, operator) VALUES (?, ?)').run('EMPTY-1', 'No Readings')
+  const altitude = app.db.prepare(
+    `SELECT id FROM telemetry_parameters WHERE satellite_id = 'PHOTON-01' AND name = 'altitude'`,
+  ).get() as { id: number }
   app.db.prepare(`
-    INSERT INTO telemetry (satellite_id, timestamp, measurement) VALUES
-      ('PHOTON-01', '2026-09-25T18:00:00.000Z', '{"value": 100, "units": "m", "name": "altitude", "oos": true}')
-  `).run()
+    INSERT INTO telemetry (satellite_id, parameter_id, timestamp, measurement) VALUES
+      ('PHOTON-01', ?, '2026-09-25T18:00:00.000Z', '{"value": 100, "units": "m", "name": "altitude", "oos": true}')
+  `).run(altitude.id)
 
   const res = await app.inject({ url: '/satellites' })
 

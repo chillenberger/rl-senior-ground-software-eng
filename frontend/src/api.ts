@@ -5,8 +5,13 @@ I used axios to simplify the API calls and handle errors gracefully.
 */
 import axios from 'axios'
 
-export type TelemetrySortColumn = 'satelliteId' | 'timestamp' 
+export type TelemetrySortColumn = 'timestamp' | 'measurement.value'
 export type TelemetrySortDirection = 'asc' | 'desc'
+
+export type TelemetryFilter = {
+  name: string
+  value: string
+}
 
 export type Measurement = {
   value: number | string
@@ -28,7 +33,7 @@ export type TelemetryQuery = {
   orderDirection: TelemetrySortDirection
   limit: number
   offset: number
-  filterBy: Record<string, string>
+  filterBy: TelemetryFilter[]
 }
 
 const client = axios.create({
@@ -46,12 +51,16 @@ export async function getTelemetry(query: TelemetryQuery, signal?: AbortSignal):
     signal,
     params: {
       orderBy: query.orderBy,
-      filterBy: query.filterBy,
       orderDirection: query.orderDirection,
       limit: query.limit,
       offset: query.offset,
       ...(query.satelliteId ? { satelliteId: query.satelliteId } : {}),
+      ...(query.filterBy.length > 0
+        ? { filterBy: query.filterBy.map((filter) => JSON.stringify(filter)) }
+        : {}),
     },
+    // Repeated filterBy keys, with no brackets, match the API's query parser.
+    paramsSerializer: { indexes: null },
   })
   return response.data
 }
@@ -104,4 +113,12 @@ export async function apiHealth(): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+export async function getTelemetryParameters(satelliteId: string, signal?: AbortSignal): Promise<string[]> {
+  const response = await client.get<string[]>(
+    `/telemetry-parameters/${encodeURIComponent(satelliteId)}`,
+    { signal },
+  )
+  return response.data
 }

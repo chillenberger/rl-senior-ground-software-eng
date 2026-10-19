@@ -7,10 +7,10 @@ import {
   getTelemetryRecordById, 
   deleteTelemetryRecordById,
   listSatellites,
-  type TelemetryRecord 
 } from '../../src/db/queries'
-import { applyTelemetryDefinition } from '../../src/telemetry/definitions'
-import { TelemetryConflictError, TelemetryRecordNotFoundError } from '../../src/db/errors'
+import { type TelemetryRecord } from '../../src/db/types'
+import { isOutOfSpec, isValidValue } from '../../src/telemetry'
+import { TelemetryCheckFailedError, TelemetryConflictError, TelemetryRecordNotFoundError } from '../../src/db/errors'
 import { 
   clearDatabase,
   createTempDatabase,
@@ -26,6 +26,7 @@ function storedFields (record: TelemetryRecord) {
 function publicFields (reading: typeof testReadings[number]) {
   return {
     satelliteId: reading.satellite_id,
+    parameterId: reading.parameter_id,
     timestamp: reading.timestamp,
     measurement: reading.measurement,
   }
@@ -210,7 +211,13 @@ test('applyTelemetryDefinition copies units from the telemetry parameter', async
   seedDatabase(db)
   const parameter = getTelemetryParameterByName(db, 'PHOTON-01', 'altitude')
   assert.ok(parameter)
-  const { units, oos } = applyTelemetryDefinition(parameter.definition, { name: 'altitude', value: 200 })
+
+  const measurement = { name: 'altitude', value: 200 }
+  const units = parameter.definition?.units
+  const oos = isOutOfSpec(parameter.definition?.spec, measurement)
+  const isValid = isValidValue(parameter.definition?.check, measurement)
+  if (!isValid) throw new TelemetryCheckFailedError(parameter.name, 200)
+
   const record = createTelemetryRecord(db, {
     satelliteId: 'PHOTON-01',
     timestamp: '2026-09-26T12:00:00Z',
@@ -219,6 +226,7 @@ test('applyTelemetryDefinition copies units from the telemetry parameter', async
     oos,
     ...(units === undefined ? {} : { units }),
   })
+  assert.equal(record.parameterId, parameter.id)
   assert.equal(record.measurement.name, 'altitude')
   assert.equal(record.measurement.value, 200)
   assert.equal(record.measurement.oos, false)
@@ -345,11 +353,25 @@ test('listSatellites reports oos on the latest timestamp group', async (t) => {
   const db = createTempDatabase(t)
   seedDatabase(db)
   db.prepare(`
-    INSERT INTO telemetry (satellite_id, timestamp, measurement) VALUES
-      ('PHOTON-01', '2026-09-25T18:00:00.000Z', '{"value": 100, "units": "m", "name": "altitude", "oos": true}'),
-      ('AURORA-3', '2026-09-25T16:55:00.000Z', '{"value": 10, "units": "m/s", "name": "velocity", "oos": false}'),
-      ('AURORA-3', '2026-09-25T16:00:00.000Z', '{"value": 1, "units": "m", "name": "altitude", "oos": true}')
+    INSERT INTO telemetry_parameters (satellite_id, name, derived, definition) VALUES
+      ('AURORA-3', 'velocity', 0, '{"units": "m/s", "check": "velocity >= 0", "spec": "velocity > 0"}'),
+      ('AURORA-3', 'altitude', 0, '{"units": "m", "check": "altitude >= 0", "spec": "altitude > 0"}')
   `).run()
+  const parameterId = db.prepare(
+    'SELECT id FROM telemetry_parameters WHERE satellite_id = ? AND name = ?',
+  )
+  const insertTelemetry = db.prepare(`
+    INSERT INTO telemetry (satellite_id, parameter_id, timestamp, measurement)
+    VALUES (?, ?, ?, ?)
+  `)
+  for (const [satelliteId, name, timestamp, measurement] of [
+    ['PHOTON-01', 'altitude', '2026-09-25T18:00:00.000Z', '{"value": 100, "units": "m", "name": "altitude", "oos": true}'],
+    ['AURORA-3', 'velocity', '2026-09-25T16:55:00.000Z', '{"value": 10, "units": "m/s", "name": "velocity", "oos": false}'],
+    ['AURORA-3', 'altitude', '2026-09-25T16:00:00.000Z', '{"value": 1, "units": "m", "name": "altitude", "oos": true}'],
+  ] as const) {
+    const parameter = parameterId.get(satelliteId, name) as { id: number }
+    insertTelemetry.run(satelliteId, parameter.id, timestamp, measurement)
+  }
 
   const satellites = listSatellites(db)
   assert.deepEqual(satellites, [

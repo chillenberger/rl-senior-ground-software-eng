@@ -3,19 +3,17 @@ import { z } from 'zod'
 import { 
   getTelemetryRecords, 
   getTelemetryRecordById,
-  CreateTelemetryRecordRequestSchema,
-  GetTelemetryRecordsOptionsSchema,
   deleteTelemetryRecordById,
-  MeasurementSchema,
 } from '../../db/queries'
-import { ingestTelemetry } from '../../telemetry/definitions'
+import { ingestTelemetry } from '../../telemetry'
 import { InvalidColumnError, TelemetryRecordNotFoundError, TelemetryConflictError, UnknownSatelliteError, TelemetryCheckFailedError, TelemetryParameterNotFoundError } from '../../db/errors'
-import type { GetTelemetryRecordsOptions } from '../../db/queries'
+import { CreateTelemetryRecordRequestSchema, GetTelemetryRecordsOptionsSchema, MeasurementSchema, GetTelemetryRecordsOptions } from '../../db/types'
 
 const TelemetryRecordResponseSchema = z.object({
   id: z.string(),
   timestamp: z.string(),
   satelliteId: z.string(),
+  parameterId: z.number(),
   measurement: MeasurementSchema,
 })
 

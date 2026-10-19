@@ -1,0 +1,27 @@
+server {
+    listen 5173;
+    server_name localhost;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location /telemetry {
+        proxy_pass ${API_UPSTREAM};
+    }
+
+    location /telemetry-parameters {
+        proxy_pass ${API_UPSTREAM};
+    }
+
+    location /satellites {
+        proxy_pass ${API_UPSTREAM};
+    }
+
+    location /health {
+        proxy_pass ${API_UPSTREAM};
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

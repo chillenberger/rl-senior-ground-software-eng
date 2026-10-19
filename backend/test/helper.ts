@@ -6,7 +6,7 @@ import * as test from 'node:test'
 import helper from 'fastify-cli/helper.js'
 import { type FastifyInstance } from 'fastify'
 import { openDatabase, type SqliteDatabase } from '../src/db/database'
-import { clearTelemetryCache } from '../src/telemetry/definitions'
+import { clearTelemetryCache } from '../src/telemetry'
 import '../src/plugins/sqlite'
 
 export type TestContext = {
@@ -88,6 +88,7 @@ export const testReadings = [
   {
     id: '1',
     satellite_id: 'PHOTON-01',
+    parameter_id: 1,
     timestamp: '2026-09-25T16:00:00.000Z',
     measurement: {
       value: 6,
@@ -98,6 +99,7 @@ export const testReadings = [
   {
     id: '2',
     satellite_id: 'PHOTON-01',
+    parameter_id: 2,
     timestamp: '2026-09-25T17:00:00.000Z',
     measurement: {
       value: 7,
@@ -108,6 +110,7 @@ export const testReadings = [
   {
     id: '3',
     satellite_id: 'PHOTON-01',
+    parameter_id: 4,
     timestamp: '2026-09-25T18:00:00.000Z',
     measurement: {
       value: 'anomaly',
@@ -117,6 +120,7 @@ export const testReadings = [
   {
     id: '4',
     satellite_id: 'AURORA-3',
+    parameter_id: 5,
     timestamp: '2026-09-25T16:20:00.000Z',
     measurement: {
       value: 'healthy',
@@ -126,6 +130,7 @@ export const testReadings = [
   {
     id: '5',
     satellite_id: 'AURORA-3',
+    parameter_id: 5,
     timestamp: '2026-09-25T16:55:00.000Z',
     measurement: {
       value: 'anomaly',
@@ -160,14 +165,15 @@ function seedDatabase (db: SqliteDatabase): void {
 
   const insertTelemetry = db.prepare(`
     INSERT INTO telemetry (
-      satellite_id, timestamp, measurement
+      satellite_id, parameter_id, timestamp, measurement
     ) VALUES (
-      @satellite_id, @timestamp, @measurement
+      @satellite_id, @parameter_id, @timestamp, @measurement
     )
   `)
   for (const reading of testReadings) {
     insertTelemetry.run({
       satellite_id: reading.satellite_id,
+      parameter_id: reading.parameter_id,
       timestamp: reading.timestamp,
       measurement: JSON.stringify(reading.measurement),
     })

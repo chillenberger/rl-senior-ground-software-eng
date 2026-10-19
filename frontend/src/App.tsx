@@ -23,11 +23,15 @@ function App() {
     records,
     satelliteId,
     setSatelliteId,
-    // status,
-    // setStatus,
+    parameters,
+    measurementFilter,
+    setMeasurementFilter,
+    sortParameter,
+    setSortParameter,
     sortColumn,
     sortDirection,
     setSort,
+    toggleSortDirection,
     loadMore,
     loading,
     loadingMore,
@@ -61,11 +65,15 @@ function App() {
           satellites={satellites}
           satelliteId={satelliteId}
           onSatelliteChange={setSatelliteId}
-          // status={status}
-          // onStatusChange={setStatus}
+          parameters={parameters}
+          measurementFilter={measurementFilter}
+          onMeasurementFilterChange={setMeasurementFilter}
+          sortParameter={sortParameter}
+          onSortParameterChange={setSortParameter}
           sortColumn={sortColumn}
           sortDirection={sortDirection}
           onSort={setSort}
+          onToggleSortDirection={toggleSortDirection}
           hasMore={hasMore}
           loadingMore={loadingMore}
           onLoadMore={() => void loadMore()}

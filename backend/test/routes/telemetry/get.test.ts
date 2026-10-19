@@ -2,14 +2,15 @@ import { test } from 'node:test'
 import * as assert from 'node:assert'
 import { z } from 'zod'
 import { build, seedDatabase, testReadings } from '../../helper'
-import { MeasurementSchema } from '../../../src/db/queries'
+import { MeasurementSchema } from '../../../src/db/types'
 
-const requiredFields = ['id', 'timestamp', 'satelliteId']
+const requiredFields = ['id', 'timestamp', 'satelliteId', 'parameterId']
 
 type TelemetryBody = {
   id: string
   timestamp: string
   satelliteId: string
+  parameterId: number
   measurement: z.infer<typeof MeasurementSchema>
 }
 

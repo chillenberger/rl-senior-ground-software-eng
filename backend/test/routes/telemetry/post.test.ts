@@ -2,12 +2,13 @@ import { test } from 'node:test'
 import * as assert from 'node:assert'
 import { build, seedDatabase, testSatellites } from '../../helper'
 import { z } from 'zod'
-import { MeasurementSchema } from '../../../src/db/queries'
+import { MeasurementSchema } from '../../../src/db/types'
 
 type TelemetryBody = {
   id: string
   timestamp: string
   satelliteId: string
+  parameterId: number
   measurement: z.infer<typeof MeasurementSchema>
 }
 
@@ -29,8 +30,12 @@ test('post telemetry record', async (t) => {
 
   assert.equal(res.statusCode, 200)
   const body = res.json<TelemetryBody>()
+  const parameter = app.db.prepare(
+    'SELECT id FROM telemetry_parameters WHERE satellite_id = ? AND name = ?',
+  ).get(healthyPhoton.satelliteId, healthyPhoton.name) as { id: number }
   assert.equal(body.timestamp, '2026-09-26T12:00:00.000Z')
   assert.equal(body.satelliteId, healthyPhoton.satelliteId)
+  assert.equal(body.parameterId, parameter.id)
   assert.equal(body.measurement.value, healthyPhoton.value)
   assert.equal(body.measurement.oos, false)
   assert.equal(typeof body.id, 'string')

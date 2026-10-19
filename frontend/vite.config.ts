@@ -9,6 +9,7 @@ const apiProxy = {
 
 const telemetryProxy = {
   '/telemetry': apiProxy,
+  '/telemetry-parameters': apiProxy,
   '/satellites': apiProxy,
   '/health': apiProxy,
 }

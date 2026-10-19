@@ -63,9 +63,15 @@ type TelemetryTableProps = {
   satellites: SatelliteSummary[]
   satelliteId: string
   onSatelliteChange: (satelliteId: string) => void
+  parameters: string[]
+  measurementFilter: string
+  onMeasurementFilterChange: (name: string) => void
+  sortParameter: string
+  onSortParameterChange: (name: string) => void
   sortColumn: TelemetrySortColumn
   sortDirection: TelemetrySortDirection
   onSort: (column: TelemetrySortColumn) => void
+  onToggleSortDirection: () => void
   hasMore: boolean
   loadingMore: boolean
   onLoadMore: () => void
@@ -80,9 +86,15 @@ export function TelemetryTable({
   satellites,
   satelliteId,
   onSatelliteChange,
+  parameters,
+  measurementFilter,
+  onMeasurementFilterChange,
+  sortParameter,
+  onSortParameterChange,
   sortColumn,
   sortDirection,
   onSort,
+  onToggleSortDirection,
   hasMore,
   loadingMore,
   onLoadMore,
@@ -91,10 +103,15 @@ export function TelemetryTable({
   onAddNewTelemetry,
 }: TelemetryTableProps) {
 
+  const filtersApplied = satelliteId !== '' || measurementFilter !== ''
+
   return (
     <div className="telemetry-table">
       <div className="telemetry-table__header">
-        <h2 id="telemetry-readings-heading">Telemetry readings</h2>
+        <h2 id="telemetry-readings-heading">
+          Telemetry readings
+          {filtersApplied ? <span className="telemetry-table__warning">Limited view</span> : null}
+        </h2>
         <button type="button" className="telemetry-table__add" onClick={onAddNewTelemetry}>
           New telemetry
         </button>
@@ -104,8 +121,11 @@ export function TelemetryTable({
           <thead>
             <tr>
               {COLUMNS.map((column) => {
-                const sortedByColumn = column.sortable && sortColumn === column.key
-                const ariaSort = sortedByColumn
+                const sortingThisColumn =
+                  (column.key === 'timestamp' && sortColumn === 'timestamp')
+                  || (column.key === 'measurement' && sortColumn === 'measurement.value')
+                const announcesSort = column.key === 'timestamp' || column.key === 'measurement'
+                const ariaSort = sortingThisColumn
                   ? sortDirection === 'asc'
                     ? 'ascending'
                     : 'descending'
@@ -114,7 +134,7 @@ export function TelemetryTable({
                   <th
                     key={column.key}
                     scope="col"
-                    aria-sort={column.sortable ? ariaSort : undefined}
+                    aria-sort={announcesSort ? ariaSort : undefined}
                     className={column.align === 'end' ? 'telemetry-table__numeric' : undefined}
                   >
                     {column.key === 'satelliteId' ? (
@@ -122,6 +142,22 @@ export function TelemetryTable({
                         satellites={satellites}
                         satelliteId={satelliteId}
                         onSatelliteChange={onSatelliteChange}
+                      />
+                    ) : column.key === 'name' ? (
+                      <MeasurementFilter
+                        parameters={parameters}
+                        measurementFilter={measurementFilter}
+                        disabled={satelliteId === ''}
+                        onMeasurementFilterChange={onMeasurementFilterChange}
+                      />
+                    ) : column.key === 'measurement' ? (
+                      <ValueSort
+                        parameters={parameters}
+                        sortParameter={sortParameter}
+                        sortDirection={sortDirection}
+                        disabled={satelliteId === ''}
+                        onSortParameterChange={onSortParameterChange}
+                        onToggleSortDirection={onToggleSortDirection}
                       />
                     ) : column.sortable ? (
                       <SortColumnButton
@@ -212,6 +248,85 @@ function SortColumnButton({ column, sortColumn, sortDirection, onSort }: { colum
         {sortedByColumn ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
       </span>
     </button>
+  )
+}
+
+function MeasurementFilter({
+  parameters,
+  measurementFilter,
+  disabled,
+  onMeasurementFilterChange,
+}: {
+  parameters: string[]
+  measurementFilter: string
+  disabled: boolean
+  onMeasurementFilterChange: (name: string) => void
+}) {
+  return (
+    <label className="telemetry-table__filter" htmlFor="measurement-filter">
+      <span>Measurement</span>
+      <select
+        id="measurement-filter"
+        value={measurementFilter}
+        disabled={disabled}
+        onChange={(event) => onMeasurementFilterChange(event.target.value)}
+      >
+        <option value="">All</option>
+        {parameters.map((name) => (
+          <option key={name} value={name}>
+            {name}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+function ValueSort({
+  parameters,
+  sortParameter,
+  sortDirection,
+  disabled,
+  onSortParameterChange,
+  onToggleSortDirection,
+}: {
+  parameters: string[]
+  sortParameter: string
+  sortDirection: TelemetrySortDirection
+  disabled: boolean
+  onSortParameterChange: (name: string) => void
+  onToggleSortDirection: () => void
+}) {
+  const sortingByValue = sortParameter !== ''
+
+  return (
+    <div className="telemetry-table__filter">
+      <label htmlFor="value-sort">Value</label>
+      <select
+        id="value-sort"
+        value={sortParameter}
+        disabled={disabled}
+        onChange={(event) => onSortParameterChange(event.target.value)}
+      >
+        <option value="">—</option>
+        {parameters.map((name) => (
+          <option key={name} value={name}>
+            {name}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        className="telemetry-table__sort"
+        onClick={onToggleSortDirection}
+        disabled={!sortingByValue}
+        aria-label="Toggle value sort direction"
+      >
+        <span className="telemetry-table__indicator" aria-hidden="true">
+          {sortingByValue ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+        </span>
+      </button>
+    </div>
   )
 }
 
